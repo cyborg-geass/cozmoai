@@ -1,312 +1,328 @@
-import sys
 from pathlib import Path
+import sys
 
 import cv2
 import numpy as np
 import open3d as o3d
 
-from cozmo_ai.geometry.backprojection import (
-    depth_to_camera_points,
+from cozmo_ai.geometry.calibration import CameraCalibration
+from cozmo_ai.geometry.backprojection import depth_to_camera_points
+from cozmo_ai.geometry.pose import (
+    quaternion_to_rotation_matrix,
+    camera_to_world,
 )
-from cozmo_ai.io.calibration import (
-    load_camera_calibration,
-)
-from cozmo_ai.io.odometry import (
-    get_frame_pose,
-    load_odometry,
-)
+from cozmo_ai.io.odometry import load_odometry
+from cozmo_ai.io.calibration import load_camera_calibration
 
 
-# ============================================================
+# ------------------------------------------------------------
 # Configuration
-# ============================================================
+# ------------------------------------------------------------
 
-FRAME_STRIDE = 4
+FRAME_STRIDE = 8
 PIXEL_STRIDE = 4
+VOXEL_SIZE = 0.02
 
 
-# ============================================================
-# Main
-# ============================================================
+def find_depth_files(depth_dir):
+    files = sorted(
+        list(depth_dir.glob("*.png"))
+        + list(depth_dir.glob("*.PNG"))
+    )
+
+    if not files:
+        raise RuntimeError(
+            f"No depth PNG files found in {depth_dir}"
+        )
+
+    return files
+
 
 def main():
 
-    if len(sys.argv) != 2:
-
+    if len(sys.argv) != 3:
         print(
             "Usage:\n"
-            'uv run python scripts\\build_pointcloud.py '
-            '"..\\cozmo-dataset\\raw_dataset\\single_room\\c00a170fe1"'
+            "  uv run python scripts/build_pointcloud.py "
+            "<capture_dir> <output_ply>"
         )
-
         sys.exit(1)
 
-    capture_dir = Path(
-        sys.argv[1]
-    )
+    capture_dir = Path(sys.argv[1])
+    output_path = Path(sys.argv[2])
 
-    depth_dir = (
-        capture_dir / "depth"
-    )
-
-    odometry_path = (
-        capture_dir / "odometry.csv"
-    )
-
-    if not depth_dir.exists():
+    if not capture_dir.exists():
         raise FileNotFoundError(
-            f"Missing depth directory: "
-            f"{depth_dir}"
+            f"Capture directory does not exist: {capture_dir}"
         )
 
-    if not odometry_path.exists():
-        raise FileNotFoundError(
-            f"Missing odometry file: "
-            f"{odometry_path}"
-        )
+    depth_dir = capture_dir / "depth"
+    odometry_path = capture_dir / "odometry.csv"
+    camera_matrix_path = capture_dir / "camera_matrix.csv"
+
+    print("=" * 70)
+    print("PRODUCTION POINT CLOUD BUILDER")
+    print("=" * 70)
+
+    print("\nCapture:")
+    print(capture_dir)
 
     # --------------------------------------------------------
-    # Load calibration and odometry
+    # Load depth files
     # --------------------------------------------------------
 
-    calibration = (
-        load_camera_calibration(
-            capture_dir
-        )
+    depth_files = find_depth_files(depth_dir)
+
+    print("\nDepth frames:", len(depth_files))
+
+    # --------------------------------------------------------
+    # Load calibration
+    # --------------------------------------------------------
+
+    calibration = load_camera_calibration(
+        camera_matrix_path
     )
+
+    print("\nCalibration:")
+    print("RGB:", calibration.rgb_width, "x", calibration.rgb_height)
+    print(
+        "Depth:",
+        calibration.depth_width,
+        "x",
+        calibration.depth_height
+    )
+
+    print(
+        "RGB intrinsics:",
+        calibration.fx_rgb,
+        calibration.fy_rgb,
+        calibration.cx_rgb,
+        calibration.cy_rgb
+    )
+
+    print(
+        "Depth scale:",
+        calibration.depth_scale
+    )
+
+    print("\nDepth intrinsics:")
+    print(calibration.depth_intrinsics)
+
+    # --------------------------------------------------------
+    # Load odometry
+    # --------------------------------------------------------
 
     odometry = load_odometry(
         odometry_path
     )
 
-    depth_files = sorted(
-        depth_dir.glob("*.png")
-    )
+    print("\nOdometry frames:", len(odometry))
 
-    n = min(
+    # --------------------------------------------------------
+    # Validate correspondence
+    # --------------------------------------------------------
+
+    if len(depth_files) != len(odometry):
+        print(
+            "\nWARNING:"
+            f" depth frames={len(depth_files)}"
+            f", odometry rows={len(odometry)}"
+        )
+
+    max_frame = min(
         len(depth_files),
-        len(odometry),
-    )
-
-    print("=" * 70)
-    print("BUILDING GLOBAL POINT CLOUD")
-    print("=" * 70)
-
-    print(
-        f"\nFrames available: {n}"
-    )
-
-    print(
-        f"Frame stride:    {FRAME_STRIDE}"
-    )
-
-    print(
-        f"Pixel stride:    {PIXEL_STRIDE}"
-    )
-
-    print(
-        f"Depth scale:     "
-        f"{calibration.depth_scale}"
-    )
-
-    print(
-        "\nDepth intrinsics:"
-    )
-
-    print(
-        calibration.depth_intrinsics
+        len(odometry)
     )
 
     # --------------------------------------------------------
-    # Build global cloud
+    # Process frames
     # --------------------------------------------------------
 
     all_points = []
 
-    processed = 0
+    print("\nProcessing:")
+    print("Frame stride:", FRAME_STRIDE)
+    print("Pixel stride:", PIXEL_STRIDE)
 
-    for frame_index in range(
+    for frame_idx in range(
         0,
-        n,
-        FRAME_STRIDE,
+        max_frame,
+        FRAME_STRIDE
     ):
 
+        depth_path = depth_files[frame_idx]
+
         depth = cv2.imread(
-            str(depth_files[frame_index]),
-            cv2.IMREAD_UNCHANGED,
+            str(depth_path),
+            cv2.IMREAD_UNCHANGED
         )
 
         if depth is None:
-
             print(
-                f"WARNING: could not read "
-                f"{depth_files[frame_index]}"
+                f"WARNING: could not read {depth_path}"
             )
-
             continue
 
-        # --------------------------------------------
-        # Depth → camera coordinates
-        # --------------------------------------------
+        if depth.dtype != np.uint16:
+            print(
+                f"WARNING: unexpected depth dtype "
+                f"{depth.dtype} at frame {frame_idx}"
+            )
 
-        points_camera = (
-            depth_to_camera_points(
+        try:
+
+            points_camera = depth_to_camera_points(
                 depth,
                 calibration,
                 pixel_stride=PIXEL_STRIDE,
             )
-        )
 
-        # --------------------------------------------
-        # Camera → world coordinates
-        # --------------------------------------------
-
-        rotation, translation = (
-            get_frame_pose(
-                odometry,
-                frame_index,
-            )
-        )
-
-        points_world = (
-            rotation
-            @ points_camera.T
-        ).T + translation
-
-        valid = np.all(
-            np.isfinite(points_world),
-            axis=1,
-        )
-
-        points_world = (
-            points_world[valid]
-        )
-
-        all_points.append(
-            points_world
-        )
-
-        processed += 1
-
-        if (
-            processed == 1
-            or processed % 50 == 0
-            or frame_index + FRAME_STRIDE >= n
-        ):
+        except Exception as exc:
 
             print(
-                f"Processed "
-                f"{frame_index + 1}/{n} "
-                f"frames"
+                f"WARNING: backprojection failed "
+                f"at frame {frame_idx}: {exc}"
+            )
+            continue
+
+        if len(points_camera) == 0:
+            continue
+
+        # ----------------------------------------------------
+        # Pose
+        # ----------------------------------------------------
+
+        row = odometry.iloc[frame_idx]
+
+        rotation = quaternion_to_rotation_matrix(
+            row["qx"],
+            row["qy"],
+            row["qz"],
+            row["qw"],
+        )
+
+        translation = np.array(
+            [
+                row["x"],
+                row["y"],
+                row["z"],
+            ],
+            dtype=np.float64,
+        )
+
+        points_world = camera_to_world(
+            points_camera,
+            rotation,
+            translation,
+        )
+
+        # Remove non-finite values.
+        valid = np.isfinite(
+            points_world
+        ).all(axis=1)
+
+        points_world = points_world[valid]
+
+        if len(points_world):
+            all_points.append(
+                points_world
             )
 
-    if not all_points:
-
-        raise RuntimeError(
-            "No valid points were generated."
-        )
+        if (
+            frame_idx == 0
+            or frame_idx % 500 == 0
+            or frame_idx + FRAME_STRIDE >= max_frame
+        ):
+            print(
+                f"Processed "
+                f"{frame_idx + 1}/{max_frame}"
+            )
 
     # --------------------------------------------------------
     # Combine
     # --------------------------------------------------------
 
+    if not all_points:
+        raise RuntimeError(
+            "No valid points were generated."
+        )
+
     points = np.vstack(
         all_points
     )
 
-    print(
-        "\nRaw global point cloud:"
-    )
+    print("\nRaw global point cloud:")
 
     print(
-        f"Points: {len(points):,}"
+        "Points:",
+        len(points)
     )
+
+    mins = points.min(axis=0)
+    maxs = points.max(axis=0)
 
     print(
         "Bounds:"
     )
 
     print(
-        f"X: {points[:, 0].min():.3f} "
-        f"→ {points[:, 0].max():.3f}"
+        f"X: {mins[0]:.3f} -> {maxs[0]:.3f}"
     )
 
     print(
-        f"Y: {points[:, 1].min():.3f} "
-        f"→ {points[:, 1].max():.3f}"
+        f"Y: {mins[1]:.3f} -> {maxs[1]:.3f}"
     )
 
     print(
-        f"Z: {points[:, 2].min():.3f} "
-        f"→ {points[:, 2].max():.3f}"
+        f"Z: {mins[2]:.3f} -> {maxs[2]:.3f}"
     )
 
     # --------------------------------------------------------
-    # Open3D point cloud
+    # Open3D voxel downsampling
     # --------------------------------------------------------
 
-    cloud = o3d.geometry.PointCloud()
+    print("\nApplying voxel downsampling...")
 
-    cloud.points = (
-        o3d.utility.Vector3dVector(
-            points
-        )
+    pcd = o3d.geometry.PointCloud()
+
+    pcd.points = o3d.utility.Vector3dVector(
+        points
     )
 
-    # --------------------------------------------------------
-    # Voxel downsampling
-    # --------------------------------------------------------
-
-    print(
-        "\nApplying voxel downsampling..."
-    )
-
-    downsampled = (
-        cloud.voxel_down_sample(
-            voxel_size=0.02
-        )
+    pcd = pcd.voxel_down_sample(
+        voxel_size=VOXEL_SIZE
     )
 
     print(
-        f"Downsampled points: "
-        f"{len(downsampled.points):,}"
+        "Downsampled points:",
+        len(pcd.points)
     )
 
     # --------------------------------------------------------
     # Save
     # --------------------------------------------------------
 
-    output_dir = (
-        Path("outputs")
-        / "single_room"
-    )
-
-    output_dir.mkdir(
+    output_path.parent.mkdir(
         parents=True,
-        exist_ok=True,
+        exist_ok=True
     )
 
-    output_path = (
-        output_dir
-        / "pointcloud_production.ply"
-    )
-
-    success = (
-        o3d.io.write_point_cloud(
-            str(output_path),
-            downsampled,
-        )
+    success = o3d.io.write_point_cloud(
+        str(output_path),
+        pcd
     )
 
     if not success:
         raise RuntimeError(
-            f"Failed to save "
-            f"{output_path}"
+            f"Failed to save point cloud: {output_path}"
         )
 
-    print(
-        f"\nSaved: {output_path}"
-    )
+    print("\nSaved:")
+    print(output_path)
+
+    print("\n" + "=" * 70)
+    print("DONE")
+    print("=" * 70)
 
 
 if __name__ == "__main__":
