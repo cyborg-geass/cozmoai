@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data
+data/
+dataset/
+datasets/
+*.mp4
+*.mov
+*.avi
+*.bin
+*.npy
+*.npz
+*.ply
+*.pcd
+
+# Outputs
+outputs/
+runs/
+results/
+
+# Secrets
+.env
+
+# Jupyter
+.ipynb_checkpoints/
