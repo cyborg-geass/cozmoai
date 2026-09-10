@@ -1,86 +1,91 @@
-from __future__ import annotations
-
 import numpy as np
+from .calibration import CameraCalibration
 
 
-def depth_to_points(
+def depth_to_camera_points(
     depth: np.ndarray,
-    fx: float,
-    fy: float,
-    cx: float,
-    cy: float,
-    depth_scale: float = 1000.0,
-    stride: int = 4,
+    calibration: CameraCalibration,
+    pixel_stride: int = 1,
 ) -> np.ndarray:
     """
-    Convert a depth image into 3D points in camera coordinates.
-
-    The supplied camera intrinsics may correspond to the RGB
-    resolution rather than the depth resolution. Therefore we
-    scale the intrinsics according to the depth image dimensions.
+    Backproject a depth image into 3D camera coordinates.
 
     Parameters
     ----------
     depth:
-        H x W depth image.
+        H x W uint16 depth image.
 
-    fx, fy, cx, cy:
-        Camera intrinsics at the RGB/native camera resolution.
+    calibration:
+        Camera/depth calibration.
 
-    depth_scale:
-        Raw depth units per metre.
+    pixel_stride:
+        Sample every Nth pixel in both dimensions.
 
-    stride:
-        Pixel sampling stride.
+    Returns
+    -------
+    np.ndarray
+        Nx3 array containing points in camera coordinates.
+        Coordinates are expressed in meters.
     """
 
-    height, width = depth.shape
+    if depth.ndim != 2:
+        raise ValueError(
+            f"Expected a single-channel depth image, "
+            f"got shape {depth.shape}"
+        )
 
-    # ---------------------------------------------------------
-    # The dataset's RGB resolution is 1920x1440 while depth
-    # resolution is 256x192.
-    #
-    # Convert RGB-resolution intrinsics to depth resolution.
-    # ---------------------------------------------------------
+    expected_shape = (
+        calibration.depth_height,
+        calibration.depth_width,
+    )
 
-    # These are inferred from the supplied data.
-    RGB_WIDTH = 1920
-    RGB_HEIGHT = 1440
+    if depth.shape != expected_shape:
+        raise ValueError(
+            f"Depth shape {depth.shape} does not match "
+            f"calibration shape {expected_shape}"
+        )
 
-    scale_x = width / RGB_WIDTH
-    scale_y = height / RGB_HEIGHT
+    if pixel_stride < 1:
+        raise ValueError(
+            "pixel_stride must be >= 1"
+        )
 
-    fx_depth = fx * scale_x
-    fy_depth = fy * scale_y
-    cx_depth = cx * scale_x
-    cy_depth = cy * scale_y
+    fx = calibration.fx_depth
+    fy = calibration.fy_depth
+    cx = calibration.cx_depth
+    cy = calibration.cy_depth
 
-    # ---------------------------------------------------------
-    # Subsample depth
-    # ---------------------------------------------------------
+    # Sample pixel coordinates.
+    v, u = np.indices(depth.shape)
 
-    depth_sampled = depth[::stride, ::stride]
+    u = u[::pixel_stride, ::pixel_stride]
+    v = v[::pixel_stride, ::pixel_stride]
 
-    v, u = np.indices(depth_sampled.shape)
+    depth_sampled = depth[
+        ::pixel_stride,
+        ::pixel_stride,
+    ]
 
-    u = u * stride
-    v = v * stride
+    # Convert raw depth units to meters.
+    z = (
+        depth_sampled.astype(np.float64)
+        / calibration.depth_scale
+    )
 
-    z = depth_sampled.astype(np.float64) / depth_scale
+    # Valid depth.
+    valid = (
+        np.isfinite(z)
+        & (z > 0.0)
+    )
 
-    valid = np.isfinite(z) & (z > 0)
-
-    u = u[valid]
-    v = v[valid]
+    u = u[valid].astype(np.float64)
+    v = v[valid].astype(np.float64)
     z = z[valid]
 
-    # ---------------------------------------------------------
-    # Backproject
-    # ---------------------------------------------------------
+    # Pinhole backprojection.
+    x = (u - cx) * z / fx
+    y = (v - cy) * z / fy
 
-    x = (u - cx_depth) * z / fx_depth
-    y = (v - cy_depth) * z / fy_depth
-
-    points = np.column_stack((x, y, z))
-
-    return points
+    return np.column_stack(
+        (x, y, z)
+    )
