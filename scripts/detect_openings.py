@@ -302,10 +302,10 @@ def main():
         f"{h.min():.3f} -> {h.max():.3f} m"
     )
 
-    print("\nWall-local points:", len(v))
+    print("\nWall-local points:", len(s))
     print(
         "Horizontal range:",
-        f"{v.min():.3f} -> {v.max():.3f} m"
+        f"{s.min():.3f} -> {s.max():.3f} m"
     )
     print(
         "Height range:",
@@ -457,15 +457,15 @@ def main():
         )
 
         candidates.append({
-            "left_v": float(left),
-            "right_v": float(right),
+            "left_s": float(left),
+            "right_s": float(right),
             "width_m": float(width),
             "height_m": float(opening_height),
             "score": score,
         })
 
         print(
-            f"  v={left:.2f} -> {right:.2f} "
+            f"  s={left:.2f} -> {right:.2f} "
             f"width={width:.2f} m "
             f"height≈{opening_height:.2f} m "
             f"score={score:.3f}"
