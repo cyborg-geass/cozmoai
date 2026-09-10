@@ -15,39 +15,58 @@ def depth_to_points(
     """
     Convert a depth image into 3D points in camera coordinates.
 
+    The supplied camera intrinsics may correspond to the RGB
+    resolution rather than the depth resolution. Therefore we
+    scale the intrinsics according to the depth image dimensions.
+
     Parameters
     ----------
     depth:
         H x W depth image.
 
     fx, fy, cx, cy:
-        Camera intrinsic parameters.
+        Camera intrinsics at the RGB/native camera resolution.
 
     depth_scale:
-        Number of raw depth units per metre.
-        1000 means depth is stored in millimetres.
+        Raw depth units per metre.
 
     stride:
         Pixel sampling stride.
-
-    Returns
-    -------
-    points:
-        N x 3 array containing XYZ points in camera coordinates.
     """
-
-    depth = depth[::stride, ::stride]
 
     height, width = depth.shape
 
-    v, u = np.indices((height, width))
+    # ---------------------------------------------------------
+    # The dataset's RGB resolution is 1920x1440 while depth
+    # resolution is 256x192.
+    #
+    # Convert RGB-resolution intrinsics to depth resolution.
+    # ---------------------------------------------------------
 
-    # Convert sampled pixel coordinates back to
-    # coordinates in the original depth image.
+    # These are inferred from the supplied data.
+    RGB_WIDTH = 1920
+    RGB_HEIGHT = 1440
+
+    scale_x = width / RGB_WIDTH
+    scale_y = height / RGB_HEIGHT
+
+    fx_depth = fx * scale_x
+    fy_depth = fy * scale_y
+    cx_depth = cx * scale_x
+    cy_depth = cy * scale_y
+
+    # ---------------------------------------------------------
+    # Subsample depth
+    # ---------------------------------------------------------
+
+    depth_sampled = depth[::stride, ::stride]
+
+    v, u = np.indices(depth_sampled.shape)
+
     u = u * stride
     v = v * stride
 
-    z = depth.astype(np.float64) / depth_scale
+    z = depth_sampled.astype(np.float64) / depth_scale
 
     valid = np.isfinite(z) & (z > 0)
 
@@ -55,8 +74,12 @@ def depth_to_points(
     v = v[valid]
     z = z[valid]
 
-    x = (u - cx) * z / fx
-    y = (v - cy) * z / fy
+    # ---------------------------------------------------------
+    # Backproject
+    # ---------------------------------------------------------
+
+    x = (u - cx_depth) * z / fx_depth
+    y = (v - cy_depth) * z / fy_depth
 
     points = np.column_stack((x, y, z))
 

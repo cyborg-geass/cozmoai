@@ -63,6 +63,10 @@ def build_point_cloud(
 
         row = odometry.iloc[i]
 
+        # Odometry intrinsics are expressed at the RGB/native
+        # camera resolution. depth_to_points() converts them
+        # to the depth image resolution.
+        
         fx = float(row["fx"])
         fy = float(row["fy"])
         cx = float(row["cx"])
