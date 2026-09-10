@@ -1,206 +1,311 @@
-from __future__ import annotations
-
-import argparse
+import sys
 from pathlib import Path
 
 import cv2
 import numpy as np
 import open3d as o3d
-import pandas as pd
 
-from cozmo_ai.geometry.backprojection import depth_to_points
-from cozmo_ai.geometry.transforms import (
-    quaternion_to_rotation_matrix,
-    transform_points,
+from cozmo_ai.geometry.backprojection import (
+    depth_to_camera_points,
+)
+from cozmo_ai.io.calibration import (
+    load_camera_calibration,
+)
+from cozmo_ai.io.odometry import (
+    get_frame_pose,
+    load_odometry,
 )
 
 
-def load_odometry(path: Path) -> pd.DataFrame:
-    df = pd.read_csv(path)
-    df.columns = df.columns.str.strip()
-    return df
+# ============================================================
+# Configuration
+# ============================================================
+
+FRAME_STRIDE = 4
+PIXEL_STRIDE = 4
 
 
-def build_point_cloud(
-    capture_path: Path,
-    output_path: Path,
-    frame_stride: int = 10,
-    pixel_stride: int = 4,
-    depth_scale: float = 1000.0,
-):
-    depth_dir = capture_path / "depth"
-    odometry_path = capture_path / "odometry.csv"
+# ============================================================
+# Main
+# ============================================================
 
-    odometry = load_odometry(odometry_path)
+def main():
+
+    if len(sys.argv) != 2:
+
+        print(
+            "Usage:\n"
+            'uv run python scripts\\build_pointcloud.py '
+            '"..\\cozmo-dataset\\raw_dataset\\single_room\\c00a170fe1"'
+        )
+
+        sys.exit(1)
+
+    capture_dir = Path(
+        sys.argv[1]
+    )
+
+    depth_dir = (
+        capture_dir / "depth"
+    )
+
+    odometry_path = (
+        capture_dir / "odometry.csv"
+    )
+
+    if not depth_dir.exists():
+        raise FileNotFoundError(
+            f"Missing depth directory: "
+            f"{depth_dir}"
+        )
+
+    if not odometry_path.exists():
+        raise FileNotFoundError(
+            f"Missing odometry file: "
+            f"{odometry_path}"
+        )
+
+    # --------------------------------------------------------
+    # Load calibration and odometry
+    # --------------------------------------------------------
+
+    calibration = (
+        load_camera_calibration(
+            capture_dir
+        )
+    )
+
+    odometry = load_odometry(
+        odometry_path
+    )
+
+    depth_files = sorted(
+        depth_dir.glob("*.png")
+    )
+
+    n = min(
+        len(depth_files),
+        len(odometry),
+    )
+
+    print("=" * 70)
+    print("BUILDING GLOBAL POINT CLOUD")
+    print("=" * 70)
+
+    print(
+        f"\nFrames available: {n}"
+    )
+
+    print(
+        f"Frame stride:    {FRAME_STRIDE}"
+    )
+
+    print(
+        f"Pixel stride:    {PIXEL_STRIDE}"
+    )
+
+    print(
+        f"Depth scale:     "
+        f"{calibration.depth_scale}"
+    )
+
+    print(
+        "\nDepth intrinsics:"
+    )
+
+    print(
+        calibration.depth_intrinsics
+    )
+
+    # --------------------------------------------------------
+    # Build global cloud
+    # --------------------------------------------------------
 
     all_points = []
 
-    depth_files = sorted(depth_dir.glob("*.png"))
+    processed = 0
 
-    print(f"Depth frames found: {len(depth_files)}")
-    print(f"Odometry rows:      {len(odometry)}")
-
-    if len(depth_files) != len(odometry):
-        raise ValueError(
-            "Depth and odometry counts do not match."
-        )
-
-    for i in range(
+    for frame_index in range(
         0,
-        min(len(depth_files), len(odometry)),
-        frame_stride,
+        n,
+        FRAME_STRIDE,
     ):
-        depth_path = depth_files[i]
 
         depth = cv2.imread(
-            str(depth_path),
+            str(depth_files[frame_index]),
             cv2.IMREAD_UNCHANGED,
         )
 
         if depth is None:
-            print(f"WARNING: failed to read {depth_path}")
+
+            print(
+                f"WARNING: could not read "
+                f"{depth_files[frame_index]}"
+            )
+
             continue
 
-        row = odometry.iloc[i]
+        # --------------------------------------------
+        # Depth → camera coordinates
+        # --------------------------------------------
 
-        # Odometry intrinsics are expressed at the RGB/native
-        # camera resolution. depth_to_points() converts them
-        # to the depth image resolution.
-        
-        fx = float(row["fx"])
-        fy = float(row["fy"])
-        cx = float(row["cx"])
-        cy = float(row["cy"])
-
-        points_camera = depth_to_points(
-            depth=depth,
-            fx=fx,
-            fy=fy,
-            cx=cx,
-            cy=cy,
-            depth_scale=depth_scale,
-            stride=pixel_stride,
+        points_camera = (
+            depth_to_camera_points(
+                depth,
+                calibration,
+                pixel_stride=PIXEL_STRIDE,
+            )
         )
 
-        rotation = quaternion_to_rotation_matrix(
-            float(row["qx"]),
-            float(row["qy"]),
-            float(row["qz"]),
-            float(row["qw"]),
+        # --------------------------------------------
+        # Camera → world coordinates
+        # --------------------------------------------
+
+        rotation, translation = (
+            get_frame_pose(
+                odometry,
+                frame_index,
+            )
         )
 
-        translation = np.array(
-            [
-                float(row["x"]),
-                float(row["y"]),
-                float(row["z"]),
-            ]
+        points_world = (
+            rotation
+            @ points_camera.T
+        ).T + translation
+
+        valid = np.all(
+            np.isfinite(points_world),
+            axis=1,
         )
 
-        points_world = transform_points(
-            points_camera,
-            rotation,
-            translation,
+        points_world = (
+            points_world[valid]
         )
 
-        all_points.append(points_world)
+        all_points.append(
+            points_world
+        )
 
-        if (i // frame_stride) % 10 == 0:
+        processed += 1
+
+        if (
+            processed == 1
+            or processed % 50 == 0
+            or frame_index + FRAME_STRIDE >= n
+        ):
+
             print(
-                f"Processed frame {i}/{len(depth_files)} "
-                f"→ {len(points_world):,} points"
+                f"Processed "
+                f"{frame_index + 1}/{n} "
+                f"frames"
             )
 
     if not all_points:
-        raise RuntimeError("No points were generated.")
 
-    points = np.vstack(all_points)
+        raise RuntimeError(
+            "No valid points were generated."
+        )
 
-    print()
-    print("=" * 70)
-    print("POINT CLOUD")
-    print("=" * 70)
+    # --------------------------------------------------------
+    # Combine
+    # --------------------------------------------------------
 
-    print("Total points:", len(points))
-
-    print("\nBounds:")
-    print("X:", points[:, 0].min(), "→", points[:, 0].max())
-    print("Y:", points[:, 1].min(), "→", points[:, 1].max())
-    print("Z:", points[:, 2].min(), "→", points[:, 2].max())
-
-    # Remove obvious numerical outliers.
-    finite = np.isfinite(points).all(axis=1)
-    points = points[finite]
-
-    cloud = o3d.geometry.PointCloud()
-
-    cloud.points = o3d.utility.Vector3dVector(points)
-
-    print("\nRunning voxel downsampling...")
-
-    cloud = cloud.voxel_down_sample(
-        voxel_size=0.02
+    points = np.vstack(
+        all_points
     )
 
     print(
-        "Points after downsampling:",
-        len(cloud.points),
+        "\nRaw global point cloud:"
     )
 
-    output_path.parent.mkdir(
+    print(
+        f"Points: {len(points):,}"
+    )
+
+    print(
+        "Bounds:"
+    )
+
+    print(
+        f"X: {points[:, 0].min():.3f} "
+        f"→ {points[:, 0].max():.3f}"
+    )
+
+    print(
+        f"Y: {points[:, 1].min():.3f} "
+        f"→ {points[:, 1].max():.3f}"
+    )
+
+    print(
+        f"Z: {points[:, 2].min():.3f} "
+        f"→ {points[:, 2].max():.3f}"
+    )
+
+    # --------------------------------------------------------
+    # Open3D point cloud
+    # --------------------------------------------------------
+
+    cloud = o3d.geometry.PointCloud()
+
+    cloud.points = (
+        o3d.utility.Vector3dVector(
+            points
+        )
+    )
+
+    # --------------------------------------------------------
+    # Voxel downsampling
+    # --------------------------------------------------------
+
+    print(
+        "\nApplying voxel downsampling..."
+    )
+
+    downsampled = (
+        cloud.voxel_down_sample(
+            voxel_size=0.02
+        )
+    )
+
+    print(
+        f"Downsampled points: "
+        f"{len(downsampled.points):,}"
+    )
+
+    # --------------------------------------------------------
+    # Save
+    # --------------------------------------------------------
+
+    output_dir = (
+        Path("outputs")
+        / "single_room"
+    )
+
+    output_dir.mkdir(
         parents=True,
         exist_ok=True,
     )
 
-    o3d.io.write_point_cloud(
-        str(output_path),
-        cloud,
+    output_path = (
+        output_dir
+        / "pointcloud_production.ply"
     )
 
-    print("\nSaved:", output_path)
-
-
-def main():
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument(
-        "--capture",
-        type=Path,
-        required=True,
+    success = (
+        o3d.io.write_point_cloud(
+            str(output_path),
+            downsampled,
+        )
     )
 
-    parser.add_argument(
-        "--output",
-        type=Path,
-        required=True,
-    )
+    if not success:
+        raise RuntimeError(
+            f"Failed to save "
+            f"{output_path}"
+        )
 
-    parser.add_argument(
-        "--frame-stride",
-        type=int,
-        default=10,
-    )
-
-    parser.add_argument(
-        "--pixel-stride",
-        type=int,
-        default=4,
-    )
-
-    parser.add_argument(
-        "--depth-scale",
-        type=float,
-        default=1000.0,
-    )
-
-    args = parser.parse_args()
-
-    build_point_cloud(
-        capture_path=args.capture,
-        output_path=args.output,
-        frame_stride=args.frame_stride,
-        pixel_stride=args.pixel_stride,
-        depth_scale=args.depth_scale,
+    print(
+        f"\nSaved: {output_path}"
     )
 
 
