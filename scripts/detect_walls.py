@@ -1,3 +1,4 @@
+import json
 import sys
 from pathlib import Path
 
@@ -9,33 +10,20 @@ import open3d as o3d
 # Configuration
 # ============================================================
 
-# A wall normal should be approximately horizontal.
-# Since Y is the vertical axis, wall normals should have
-# very little Y component.
-MAX_NORMAL_Y = 0.15
+NORMAL_Y_THRESHOLD = 0.15
 
-# Minimum number of points required for a wall candidate.
 MIN_WALL_POINTS = 8_000
 
-# RANSAC parameters.
 RANSAC_DISTANCE_THRESHOLD = 0.03
 RANSAC_ITERATIONS = 3000
 
-# Maximum number of planes to extract.
 MAX_PLANES = 20
 
-# Ignore points too close to the floor.
 MIN_HEIGHT_ABOVE_FLOOR = 0.10
-
-# Ignore points extremely high above the floor.
-# This is deliberately generous for now.
 MAX_HEIGHT_ABOVE_FLOOR = 3.5
 
-# Two wall planes whose normals differ by less than this
-# angle are considered parallel.
 PARALLEL_ANGLE_DEGREES = 10.0
 
-# Output directory.
 OUTPUT_PREFIX = "wall_plane"
 
 
@@ -44,12 +32,6 @@ OUTPUT_PREFIX = "wall_plane"
 # ============================================================
 
 def angle_between_normals(n1, n2):
-    """
-    Return the acute angle between two plane normals.
-
-    Since n and -n represent the same plane orientation,
-    we use the absolute value of their dot product.
-    """
 
     dot = np.clip(
         abs(np.dot(n1, n2)),
@@ -63,30 +45,16 @@ def angle_between_normals(n1, n2):
 
 
 def point_plane_distance(points, plane):
-    """
-    Calculate absolute point-to-plane distance.
 
-    Plane:
-        ax + by + cz + d = 0
-
-    Assumes the normal is normalized.
-    """
-
-    a, b, c, d = plane
+    normal = plane[:3]
+    d = plane[3]
 
     return np.abs(
-        points @ np.array([a, b, c]) + d
+        points @ normal + d
     )
 
 
 def normalize_plane(plane):
-    """
-    Normalize a plane equation:
-
-        ax + by + cz + d = 0
-
-    so that [a,b,c] has unit length.
-    """
 
     plane = np.asarray(
         plane,
@@ -108,19 +76,13 @@ def normalize_plane(plane):
 
 
 def load_floor_plane(floor_path):
-    """
-    Estimate the floor plane from floor_plane.ply.
-
-    We don't rely on the point cloud file containing
-    the original RANSAC plane equation. Instead, we
-    fit a plane to the saved floor points.
-    """
 
     floor_cloud = o3d.io.read_point_cloud(
         str(floor_path)
     )
 
     if floor_cloud.is_empty():
+
         raise RuntimeError(
             f"Floor point cloud is empty: {floor_path}"
         )
@@ -134,6 +96,7 @@ def load_floor_plane(floor_path):
     )
 
     if len(inliers) < 1000:
+
         raise RuntimeError(
             "Could not reliably refit the floor plane."
         )
@@ -142,21 +105,16 @@ def load_floor_plane(floor_path):
         plane_model
     )
 
-    # Make floor normal point approximately +Y.
     if plane[1] < 0:
         plane = -plane
 
-    return plane, floor_cloud
+    return plane
 
 
-def height_above_floor(points, floor_plane):
-    """
-    Signed distance above the floor.
-
-    Since the floor normal points approximately +Y,
-    positive signed distance corresponds to points
-    above the floor.
-    """
+def height_above_floor(
+    points,
+    floor_plane,
+):
 
     normal = floor_plane[:3]
     d = floor_plane[3]
@@ -193,7 +151,7 @@ def main():
         )
 
     # --------------------------------------------------------
-    # Load global point cloud
+    # Load point cloud
     # --------------------------------------------------------
 
     cloud = o3d.io.read_point_cloud(
@@ -216,7 +174,7 @@ def main():
     )
 
     # --------------------------------------------------------
-    # Load detected floor
+    # Load floor
     # --------------------------------------------------------
 
     floor_path = (
@@ -232,10 +190,8 @@ def main():
             "Run detect_floor.py first."
         )
 
-    floor_plane, floor_cloud = (
-        load_floor_plane(
-            floor_path
-        )
+    floor_plane = load_floor_plane(
+        floor_path
     )
 
     print(
@@ -256,18 +212,16 @@ def main():
     )
 
     # --------------------------------------------------------
-    # Remove floor
+    # Keep points above floor
     # --------------------------------------------------------
 
     all_points = np.asarray(
         cloud.points
     )
 
-    signed_height = (
-        height_above_floor(
-            all_points,
-            floor_plane,
-        )
+    signed_height = height_above_floor(
+        all_points,
+        floor_plane,
     )
 
     height_mask = (
@@ -290,7 +244,7 @@ def main():
     )
 
     # --------------------------------------------------------
-    # Iterative RANSAC
+    # RANSAC
     # --------------------------------------------------------
 
     remaining = wall_cloud
@@ -337,33 +291,14 @@ def main():
 
         normal = plane[:3]
 
-        # ----------------------------------------------------
-        # Ensure normal has consistent vertical orientation.
-        #
-        # We don't actually care whether a wall normal points
-        # inward or outward at this stage.
-        # ----------------------------------------------------
-
         if normal[1] < 0:
+
             normal = -normal
             plane = -plane
 
-        # ----------------------------------------------------
-        # Wall test
-        #
-        # A wall is vertical, so its normal should be
-        # approximately perpendicular to the floor normal.
-        #
-        # Since floor normal ~= +Y:
-        #
-        #       wall normal ~= X/Z plane
-        #
-        # therefore |normal_y| should be small.
-        # ----------------------------------------------------
-
         is_vertical = (
             abs(normal[1])
-            <= MAX_NORMAL_Y
+            <= NORMAL_Y_THRESHOLD
         )
 
         if is_vertical:
@@ -381,18 +316,18 @@ def main():
             candidates.append(
                 {
                     "plane": plane.copy(),
+
                     "normal": normal.copy(),
-                    "points": len(inliers),
+
+                    "points": int(
+                        len(inliers)
+                    ),
+
                     "centroid": centroid.copy(),
+
                     "inliers": inliers.copy(),
                 }
             )
-
-        # ----------------------------------------------------
-        # Remove detected plane regardless of orientation.
-        #
-        # This allows us to discover additional surfaces.
-        # ----------------------------------------------------
 
         remaining = (
             remaining.select_by_index(
@@ -402,7 +337,7 @@ def main():
         )
 
     # --------------------------------------------------------
-    # No walls
+    # Check candidates
     # --------------------------------------------------------
 
     if not candidates:
@@ -414,7 +349,7 @@ def main():
         return
 
     # --------------------------------------------------------
-    # Sort by number of points
+    # Sort
     # --------------------------------------------------------
 
     candidates.sort(
@@ -446,6 +381,10 @@ def main():
             "normal"
         ]
 
+        plane = candidate[
+            "plane"
+        ]
+
         print(
             f"\nWall Candidate {i}"
         )
@@ -472,14 +411,14 @@ def main():
 
         print(
             f"  Plane: "
-            f"{candidate['plane'][0]:.6f}x + "
-            f"{candidate['plane'][1]:.6f}y + "
-            f"{candidate['plane'][2]:.6f}z + "
-            f"{candidate['plane'][3]:.6f} = 0"
+            f"{plane[0]:.6f}x + "
+            f"{plane[1]:.6f}y + "
+            f"{plane[2]:.6f}z + "
+            f"{plane[3]:.6f} = 0"
         )
 
     # --------------------------------------------------------
-    # Group candidates by orientation
+    # Orientation groups
     # --------------------------------------------------------
 
     print(
@@ -574,7 +513,7 @@ def main():
             )
 
     # --------------------------------------------------------
-    # Save wall planes
+    # Save individual wall point clouds
     # --------------------------------------------------------
 
     print(
@@ -589,19 +528,18 @@ def main():
         "=" * 70
     )
 
-    # --------------------------------------------------------
-    # Re-extract each wall directly from the original
-    # height-filtered cloud using its plane equation.
-    # --------------------------------------------------------
+    wall_points = (
+        np.asarray(cloud.points)
+        [candidate_indices]
+    )
 
-    wall_points = np.asarray(
-        cloud.points
-    )[candidate_indices]
+    json_walls = []
 
     for i, candidate in enumerate(
         candidates,
         start=1,
     ):
+
         distances = point_plane_distance(
             wall_points,
             candidate["plane"],
@@ -639,8 +577,94 @@ def main():
         print(
             f"\nWall {i}: "
             f"{len(selected_points):,} points"
-            f"\n  Saved: {output_path}"
         )
+
+        print(
+            f"  Saved: "
+            f"{output_path}"
+        )
+
+        # ----------------------------------------------------
+        # JSON-safe metadata
+        # ----------------------------------------------------
+
+        json_walls.append(
+            {
+                "wall_id": i,
+
+                "plane": [
+                    float(x)
+                    for x in candidate["plane"]
+                ],
+
+                "normal": [
+                    float(x)
+                    for x in candidate["normal"]
+                ],
+
+                "points": int(
+                    candidate["points"]
+                ),
+
+                "saved_points": int(
+                    len(selected_points)
+                ),
+
+                "centroid": [
+                    float(x)
+                    for x in candidate["centroid"]
+                ],
+            }
+        )
+
+    # --------------------------------------------------------
+    # Save wall metadata
+    # --------------------------------------------------------
+
+    walls_json_path = (
+        input_path.parent
+        / "walls.json"
+    )
+
+    walls_data = {
+        "source_pointcloud": str(
+            input_path
+        ),
+
+        "floor_plane": [
+            float(x)
+            for x in floor_plane
+        ],
+
+        "configuration": {
+            "normal_y_threshold": NORMAL_Y_THRESHOLD,
+            "min_wall_points": MIN_WALL_POINTS,
+            "ransac_distance_threshold": RANSAC_DISTANCE_THRESHOLD,
+            "ransac_iterations": RANSAC_ITERATIONS,
+            "min_height_above_floor": MIN_HEIGHT_ABOVE_FLOOR,
+            "max_height_above_floor": MAX_HEIGHT_ABOVE_FLOOR,
+            "parallel_angle_degrees": PARALLEL_ANGLE_DEGREES,
+        },
+
+        "walls": json_walls,
+    }
+
+    with open(
+        walls_json_path,
+        "w",
+        encoding="utf-8",
+    ) as f:
+
+        json.dump(
+            walls_data,
+            f,
+            indent=2,
+        )
+
+    print(
+        f"\nSaved wall metadata:"
+        f"\n{walls_json_path}"
+    )
 
     print(
         "\n" + "=" * 70
@@ -654,10 +678,6 @@ def main():
         "=" * 70
     )
 
-
-# ============================================================
-# Entry point
-# ============================================================
 
 if __name__ == "__main__":
     main()
