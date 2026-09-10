@@ -25,10 +25,18 @@ VOXEL_SIZE = 0.02
 
 
 def find_depth_files(depth_dir):
-    files = sorted(
-        list(depth_dir.glob("*.png"))
-        + list(depth_dir.glob("*.PNG"))
-    )
+    # Windows is case-insensitive, so "*.png" already matches
+    # files whose extension is ".PNG". Do not combine both
+    # patterns or the same files will be returned twice.
+    files = sorted(depth_dir.glob("*.png"))
+
+    if not files:
+        # Fallback for genuinely differently-cased extensions
+        files = sorted(
+            p for p in depth_dir.iterdir()
+            if p.is_file()
+            and p.suffix.lower() == ".png"
+        )
 
     if not files:
         raise RuntimeError(
@@ -36,7 +44,6 @@ def find_depth_files(depth_dir):
         )
 
     return files
-
 
 def main():
 
@@ -58,7 +65,7 @@ def main():
 
     depth_dir = capture_dir / "depth"
     odometry_path = capture_dir / "odometry.csv"
-    camera_matrix_path = capture_dir / "camera_matrix.csv"
+    # camera_matrix_path = capture_dir / "camera_matrix.csv"
 
     print("=" * 70)
     print("PRODUCTION POINT CLOUD BUILDER")
@@ -80,7 +87,7 @@ def main():
     # --------------------------------------------------------
 
     calibration = load_camera_calibration(
-        camera_matrix_path
+        capture_dir
     )
 
     print("\nCalibration:")
