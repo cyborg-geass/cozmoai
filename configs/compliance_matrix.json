@@ -1,0 +1,89 @@
+{
+  "assignment_compliance": [
+    {
+      "requirement": "Photos input tier",
+      "status": "not_evaluated",
+      "evidence": "No photo-only benchmark capture was validated."
+    },
+    {
+      "requirement": "Video input tier",
+      "status": "implemented_interface",
+      "evidence": "RGB MP4 is present and used with depth/odometry."
+    },
+    {
+      "requirement": "LiDAR/depth input tier",
+      "status": "evaluated",
+      "evidence": "Production depth reconstruction and odometry-based point cloud evaluated."
+    },
+    {
+      "requirement": "Dimensioned stitched plan",
+      "status": "partial",
+      "evidence": "Single-room floor/wall envelope is produced; photo stitching metrics unavailable."
+    },
+    {
+      "requirement": "Room labels",
+      "status": "partial",
+      "evidence": "Single-room geometry demonstrated; multi-room semantic labels not evaluated."
+    },
+    {
+      "requirement": "Wall lengths",
+      "status": "evaluated",
+      "evidence": "2.2496 m and 6.0050 m with propagated 95% CIs."
+    },
+    {
+      "requirement": "Ceiling height <= 1.5 cm",
+      "status": "not_demonstrated",
+      "evidence": "Approx. 3.06 m is provisional; available uncertainty is much larger."
+    },
+    {
+      "requirement": "Floor area",
+      "status": "evaluated",
+      "evidence": "Reconstructed footprint area is 14.4260 m\u00b2."
+    },
+    {
+      "requirement": "Doors/windows",
+      "status": "partial",
+      "evidence": "Opening candidate detected; reliable opening height is not observed."
+    },
+    {
+      "requirement": "Damage regions",
+      "status": "not_evaluated",
+      "evidence": "Required furnished/damaged benchmark was not available."
+    },
+    {
+      "requirement": "Confidence intervals",
+      "status": "evaluated",
+      "evidence": "Dimension CIs propagated from robust wall-plane residuals."
+    },
+    {
+      "requirement": "Evidence overlays",
+      "status": "partial",
+      "evidence": "Geometry evidence exists; complete photo-tier overlays not evaluated."
+    },
+    {
+      "requirement": "Photo registration <= 1.0 px",
+      "status": "not_evaluated",
+      "evidence": "No validated photo-only benchmark capture."
+    },
+    {
+      "requirement": "Photo drift <= 0.5% diagonal",
+      "status": "not_evaluated",
+      "evidence": "No validated photo-only benchmark capture."
+    },
+    {
+      "requirement": "3+ rooms plus connector",
+      "status": "not_evaluated",
+      "evidence": "Provided capture set inspected as single-room/scan captures."
+    },
+    {
+      "requirement": "Laser/tape ground truth",
+      "status": "not_evaluated",
+      "evidence": "No ground-truth measurements available for the inspected capture."
+    },
+    {
+      "requirement": "Repeat room same tier",
+      "status": "not_evaluated",
+      "evidence": "No validated repeat-room benchmark with ground truth."
+    }
+  ]
+}
