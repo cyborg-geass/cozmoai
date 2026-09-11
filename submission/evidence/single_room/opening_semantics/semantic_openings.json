@@ -1,0 +1,12 @@
+{
+  "opening_semantics": {
+    "status": "no_candidates",
+    "method": "geometry_candidate_fusion",
+    "model": "google/owlvit-base-patch32",
+    "openings": [],
+    "message": "No geometric opening candidates were available for semantic classification.",
+    "evidence": {
+      "overview": "opening_semantics\\opening_semantics_overview.png"
+    }
+  }
+}

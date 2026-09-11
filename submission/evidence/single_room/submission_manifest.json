@@ -44,6 +44,8 @@
     "outputs\\single_room\\measurement_evaluation.json",
     "outputs\\single_room\\openings_wall5.json",
     "outputs\\single_room\\wall5_opening_profile.csv",
+    "outputs\\single_room\\opening_semantics\\semantic_openings.json",
+    "outputs\\single_room\\opening_semantics\\opening_semantics_overview.png",
     "outputs\\single_room\\room_semantics\\room_semantics.json",
     "outputs\\single_room\\room_semantics\\contact_sheet.png",
     "outputs\\single_room\\final_result.json"
@@ -129,6 +131,18 @@
       "status": "generated",
       "bytes": 3301
     },
+    "outputs\\single_room\\opening_semantics\\semantic_openings.json": {
+      "path": "outputs\\single_room\\opening_semantics\\semantic_openings.json",
+      "status": "validated",
+      "bytes": 368,
+      "semantic_status": "no_candidates",
+      "opening_count": 0
+    },
+    "outputs\\single_room\\opening_semantics\\opening_semantics_overview.png": {
+      "path": "outputs\\single_room\\opening_semantics\\opening_semantics_overview.png",
+      "status": "generated",
+      "bytes": 677228
+    },
     "outputs\\single_room\\room_semantics\\room_semantics.json": {
       "path": "outputs\\single_room\\room_semantics\\room_semantics.json",
       "status": "validated",
@@ -145,8 +159,9 @@
     "outputs\\single_room\\final_result.json": {
       "path": "outputs\\single_room\\final_result.json",
       "status": "validated",
-      "bytes": 6858,
+      "bytes": 7311,
       "room_semantics_status": "model_unavailable",
+      "opening_semantics_status": "no_candidates",
       "floor_area_m2": 14.31384308878245
     }
   },

@@ -39,6 +39,8 @@ GENERATED_ARTIFACTS = [
     OUT / "walls.json",
     OUT / "openings_wall5.json",
     OUT / "wall5_opening_profile.csv",
+    OUT / "opening_semantics" / "semantic_openings.json",
+    OUT / "opening_semantics" / "opening_semantics_overview.png",
     OUT / "pointcloud_production.ply",
     OUT / "floor_plane.ply",
     OUT / "room_semantics" / "room_semantics.json",
@@ -100,14 +102,14 @@ def validate_manifest(manifest: dict) -> None:
         {},
     )
 
-    if len(outputs) != 13:
+    if len(outputs) != 15:
         raise SubmissionPackagingError(
-            f"Expected 13 manifest outputs, found {len(outputs)}"
+            f"Expected 15 manifest outputs, found {len(outputs)}"
         )
 
-    if len(artifacts) != 13:
+    if len(artifacts) != 15:
         raise SubmissionPackagingError(
-            f"Expected 13 manifest artifacts, found {len(artifacts)}"
+            f"Expected 15 manifest artifacts, found {len(artifacts)}"
         )
 
 

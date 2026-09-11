@@ -63,6 +63,8 @@ SUBMISSION_EVIDENCE_FILES = [
     "walls.json",
     "openings_wall5.json",
     "wall5_opening_profile.csv",
+    "opening_semantics/semantic_openings.json",
+    "opening_semantics/opening_semantics_overview.png",
     "room_semantics/room_semantics.json",
     "room_semantics/contact_sheet.png",
 ]
@@ -492,6 +494,58 @@ def validate_room_semantics(path: Path) -> dict:
     return artifact
 
 
+def validate_opening_semantics(path: Path) -> dict:
+    artifact = validate_file(path)
+    data = load_json(path)
+    semantics = data.get(
+        "opening_semantics",
+        {},
+    )
+
+    require(
+        semantics.get("status")
+        in {
+            "supported",
+            "insufficient_evidence",
+            "model_unavailable",
+            "skipped",
+            "no_candidates",
+            "error",
+        },
+        "Opening semantics artifact has unsupported status.",
+    )
+    require(
+        isinstance(semantics.get("openings", []), list),
+        "Opening semantics artifact must contain an openings list.",
+    )
+
+    for opening in semantics.get("openings", []):
+        geometry = opening.get(
+            "geometry",
+            {},
+        )
+        if geometry.get("height_m") is None:
+            require(
+                geometry.get("height_status") in {None, "not_observed"},
+                "Semantic opening with null height must preserve not_observed status.",
+            )
+
+    artifact.update(
+        {
+            "status": "validated",
+            "semantic_status": semantics.get("status"),
+            "opening_count": len(
+                semantics.get(
+                    "openings",
+                    [],
+                )
+            ),
+        }
+    )
+
+    return artifact
+
+
 def validate_final_result(path: Path) -> dict:
     artifact = validate_file(path)
     data = load_json(path)
@@ -512,11 +566,16 @@ def validate_final_result(path: Path) -> dict:
         data["geometry"]["floor_area"]["method"] == "reconstructed_polygon",
         "Final result must report reconstructed polygon area as floor area.",
     )
+    require(
+        "opening_semantics" in data,
+        "Final result is missing opening_semantics.",
+    )
 
     artifact.update(
         {
             "status": "validated",
             "room_semantics_status": data["room_semantics"].get("status"),
+            "opening_semantics_status": data["opening_semantics"].get("status"),
             "floor_area_m2": data["geometry"]["floor_area"].get("value_m2"),
         }
     )
@@ -537,6 +596,7 @@ def validate_artifact(path: Path) -> dict:
         "measurement_evaluation.json": validate_measurements,
         "openings_wall5.json": validate_openings,
         "room_semantics.json": validate_room_semantics,
+        "semantic_openings.json": validate_opening_semantics,
     }
 
     validator = validators.get(path.name)
@@ -568,10 +628,19 @@ def clear_previous_outputs() -> None:
     if semantic_dir.exists():
         shutil.rmtree(semantic_dir)
 
+    opening_semantic_dir = OUT / "opening_semantics"
+    if opening_semantic_dir.exists():
+        shutil.rmtree(opening_semantic_dir)
+
 
 def load_room_semantics() -> dict:
     path = OUT / "room_semantics" / "room_semantics.json"
     return load_json(path)["room_semantics"]
+
+
+def load_opening_semantics() -> dict:
+    path = OUT / "opening_semantics" / "semantic_openings.json"
+    return load_json(path)["opening_semantics"]
 
 
 def build_final_result(manifest: dict) -> dict:
@@ -585,6 +654,7 @@ def build_final_result(manifest: dict) -> dict:
         OUT / "openings_wall5.json"
     )
     room_semantics = load_room_semantics()
+    opening_semantics = load_opening_semantics()
 
     dimension_a = measurements["room"]["dimensions"]["dimension_a"]
     dimension_b = measurements["room"]["dimensions"]["dimension_b"]
@@ -614,31 +684,35 @@ def build_final_result(manifest: dict) -> dict:
             "selected_wall_pairs": envelope["selected_wall_pairs"],
             "trajectory_inside_ratio": envelope["trajectory_inside_ratio"],
         },
-        "openings": [
-            {
-                "opening_id": index + 1,
-                "wall_id": candidate.get("wall_id", openings.get("wall_id")),
-                "geometry": {
-                    "width_m": candidate.get("width_m"),
-                    "height_m": candidate.get("height_m"),
-                    "height_status": candidate.get("height_status"),
-                    "method": "wall_occupancy_geometry",
-                },
-                "semantics": {
-                    "class": "unknown",
-                    "confidence": 0.0,
-                    "method": "not_evaluated",
-                    "association_iou": None,
-                    "status": "not_evaluated",
-                },
-            }
-            for index, candidate in enumerate(
-                openings.get(
-                    "candidates",
-                    [],
+        "openings": (
+            opening_semantics.get("openings")
+            or [
+                {
+                    "opening_id": index + 1,
+                    "wall_id": candidate.get("wall_id", openings.get("wall_id")),
+                    "geometry": {
+                        "width_m": candidate.get("width_m"),
+                        "height_m": candidate.get("height_m"),
+                        "height_status": candidate.get("height_status"),
+                        "method": "wall_occupancy_geometry",
+                    },
+                    "semantics": {
+                        "class": "unknown",
+                        "confidence": 0.0,
+                        "method": "not_evaluated",
+                        "association_iou": None,
+                        "status": "not_evaluated",
+                    },
+                }
+                for index, candidate in enumerate(
+                    openings.get(
+                        "candidates",
+                        [],
+                    )
                 )
-            )
-        ],
+            ]
+        ),
+        "opening_semantics": opening_semantics,
         "ceiling": {
             "value_m": manifest["ceiling"]["provisional_height_m"],
             "status": "provisional",
@@ -647,6 +721,10 @@ def build_final_result(manifest: dict) -> dict:
         },
         "evidence": {
             "room_classification_overlay": room_semantics.get("contact_sheet"),
+            "opening_semantics_overview": opening_semantics.get(
+                "evidence",
+                {},
+            ).get("overview"),
             "room_envelope": "room_envelope.png",
             "room_geometry": "room_geometry.png",
             "measurements": "measurement_evaluation.json",
@@ -733,6 +811,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--room-model", default="openai/clip-vit-base-patch32")
     parser.add_argument("--room-labels", default=None)
     parser.add_argument("--room-samples", type=int, default=16)
+    parser.add_argument("--opening-model", default="google/owlvit-base-patch32")
+    parser.add_argument("--opening-semantics", action="store_true", default=True)
+    parser.add_argument("--disable-opening-semantics", action="store_true")
     parser.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
     parser.add_argument("--offline-model-path", default=None)
     parser.add_argument("--allow-model-download", action="store_true")
@@ -747,7 +828,7 @@ def main() -> int:
 
     steps = [
         {
-            "label": "1/8 Build production point cloud",
+            "label": "1/9 Build production point cloud",
             "args": [
                 "uv", "run", "python", "scripts/build_pointcloud.py",
                 str(SINGLE_ROOM), str(OUT / "pointcloud_production.ply"),
@@ -757,7 +838,7 @@ def main() -> int:
             ],
         },
         {
-            "label": "2/8 Detect floor",
+            "label": "2/9 Detect floor",
             "args": [
                 "uv", "run", "python", "scripts/detect_floor.py",
                 str(OUT / "pointcloud_production.ply"),
@@ -767,7 +848,7 @@ def main() -> int:
             ],
         },
         {
-            "label": "3/8 Detect walls",
+            "label": "3/9 Detect walls",
             "args": [
                 "uv", "run", "python", "scripts/detect_walls.py",
                 str(OUT / "pointcloud_production.ply"),
@@ -777,7 +858,7 @@ def main() -> int:
             ],
         },
         {
-            "label": "4/8 Build room geometry",
+            "label": "4/9 Build room geometry",
             "args": [
                 "uv", "run", "python", "scripts/build_room_geometry.py",
                 str(OUT / "walls.json"),
@@ -788,7 +869,7 @@ def main() -> int:
             ],
         },
         {
-            "label": "5/8 Select room envelope",
+            "label": "5/9 Select room envelope",
             "args": [
                 "uv", "run", "python", "scripts/select_room_envelope.py",
                 str(OUT / "walls.json"), str(SINGLE_ROOM),
@@ -799,7 +880,7 @@ def main() -> int:
             ],
         },
         {
-            "label": "6/8 Evaluate measurements",
+            "label": "6/9 Evaluate measurements",
             "args": [
                 "uv", "run", "python", "scripts/evaluate_measurements.py",
                 str(OUT),
@@ -809,7 +890,7 @@ def main() -> int:
             ],
         },
         {
-            "label": "7/8 Detect openings",
+            "label": "7/9 Detect openings",
             "args": [
                 "uv", "run", "python", "scripts/detect_openings.py",
                 str(OUT / "pointcloud_production.ply"),
@@ -822,7 +903,35 @@ def main() -> int:
             ],
         },
         {
-            "label": "8/8 Classify room semantics",
+            "label": "8/9 Classify opening semantics",
+            "args": [
+                "uv", "run", "python", "scripts/classify_openings.py",
+                str(SINGLE_ROOM),
+                str(OUT / "openings_wall5.json"),
+                str(OUT),
+                "--opening-model", args.opening_model,
+                "--device", args.device,
+                *(
+                    ["--allow-model-download"]
+                    if args.allow_model_download
+                    else []
+                ),
+                *(
+                    ["--skip-model"]
+                    if (
+                        not args.enable_ai
+                        or args.disable_opening_semantics
+                    )
+                    else []
+                ),
+            ],
+            "outputs": [
+                OUT / "opening_semantics" / "semantic_openings.json",
+                OUT / "opening_semantics" / "opening_semantics_overview.png",
+            ],
+        },
+        {
+            "label": "9/9 Classify room semantics",
             "args": [
                 "uv", "run", "python", "scripts/classify_room.py",
                 str(SINGLE_ROOM),
@@ -882,6 +991,8 @@ def main() -> int:
         "measurement_evaluation.json",
         "openings_wall5.json",
         "wall5_opening_profile.csv",
+        "opening_semantics/semantic_openings.json",
+        "opening_semantics/opening_semantics_overview.png",
         "room_semantics/room_semantics.json",
         "room_semantics/contact_sheet.png",
         "final_result.json",

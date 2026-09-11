@@ -221,6 +221,16 @@
     "trajectory_inside_ratio": 0.7230320699708455
   },
   "openings": [],
+  "opening_semantics": {
+    "status": "no_candidates",
+    "method": "geometry_candidate_fusion",
+    "model": "google/owlvit-base-patch32",
+    "openings": [],
+    "message": "No geometric opening candidates were available for semantic classification.",
+    "evidence": {
+      "overview": "opening_semantics\\opening_semantics_overview.png"
+    }
+  },
   "ceiling": {
     "value_m": 3.06,
     "status": "provisional",
@@ -229,6 +239,7 @@
   },
   "evidence": {
     "room_classification_overlay": "room_semantics\\contact_sheet.png",
+    "opening_semantics_overview": "opening_semantics\\opening_semantics_overview.png",
     "room_envelope": "room_envelope.png",
     "room_geometry": "room_geometry.png",
     "measurements": "measurement_evaluation.json",
