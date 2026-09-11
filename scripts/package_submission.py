@@ -11,6 +11,8 @@ SUBMISSION = REPO / "submission"
 BUNDLE = REPO / "outputs" / "cozmo_ai_submission_bundle.zip"
 
 TRACKED_FILES = [
+    REPO / ".gitignore",
+    REPO / ".python-version",
     REPO / "README.md",
     REPO / "pyproject.toml",
     REPO / "uv.lock",

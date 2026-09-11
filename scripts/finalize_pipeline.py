@@ -808,15 +808,54 @@ def parse_args() -> argparse.Namespace:
         help="Skip semantic perception and write a skipped semantic result.",
     )
     parser.set_defaults(enable_ai=True)
-    parser.add_argument("--room-model", default="openai/clip-vit-base-patch32")
-    parser.add_argument("--room-labels", default=None)
-    parser.add_argument("--room-samples", type=int, default=16)
-    parser.add_argument("--opening-model", default="google/owlvit-base-patch32")
-    parser.add_argument("--opening-semantics", action="store_true", default=True)
-    parser.add_argument("--disable-opening-semantics", action="store_true")
-    parser.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
-    parser.add_argument("--offline-model-path", default=None)
-    parser.add_argument("--allow-model-download", action="store_true")
+    parser.add_argument(
+        "--room-model",
+        default="openai/clip-vit-base-patch32",
+        help="Room classification model id or local model path.",
+    )
+    parser.add_argument(
+        "--room-labels",
+        default=None,
+        help="Comma-separated room labels to score instead of the defaults.",
+    )
+    parser.add_argument(
+        "--room-samples",
+        type=int,
+        default=16,
+        help="Number of RGB frames requested for room classification.",
+    )
+    parser.add_argument(
+        "--opening-model",
+        default="google/owlvit-base-patch32",
+        help="Open-vocabulary model id used to label projected opening candidates.",
+    )
+    parser.add_argument(
+        "--opening-semantics",
+        action="store_true",
+        default=True,
+        help="Run opening semantic fusion. This is the default.",
+    )
+    parser.add_argument(
+        "--disable-opening-semantics",
+        action="store_true",
+        help="Skip model-backed opening labels while preserving geometry outputs.",
+    )
+    parser.add_argument(
+        "--device",
+        choices=["auto", "cpu", "cuda"],
+        default="auto",
+        help="Device preference for optional model inference.",
+    )
+    parser.add_argument(
+        "--offline-model-path",
+        default=None,
+        help="Local room-classification model path to use before model ids.",
+    )
+    parser.add_argument(
+        "--allow-model-download",
+        action="store_true",
+        help="Permit optional model adapters to download weights if needed.",
+    )
     return parser.parse_args()
 
 

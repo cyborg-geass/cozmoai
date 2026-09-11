@@ -43,7 +43,7 @@
     {
       "requirement": "Doors/windows",
       "status": "partial",
-      "evidence": "Opening detector runs on the selected wall; the deterministic pass does not report a reliable opening candidate or inferred height."
+      "evidence": "Geometry-first opening detector and optional door/window semantic classifier are integrated. The current selected wall has zero reliable geometric candidates, so semantic output is no_candidates and no RGB-only dimensions are invented."
     },
     {
       "requirement": "Damage regions",
@@ -58,7 +58,7 @@
     {
       "requirement": "Evidence overlays",
       "status": "partial",
-      "evidence": "Geometry plots and room-classification contact sheet are produced; complete photo-tier overlays are not evaluated."
+      "evidence": "Geometry plots, room-classification contact sheet, and opening-semantics overview are produced; complete photo-tier overlays are not evaluated."
     },
     {
       "requirement": "Photo registration <= 1.0 px",

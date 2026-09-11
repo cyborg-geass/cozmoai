@@ -20,6 +20,8 @@ result, and writes a submission manifest.
 - Wall-plane P95 residuals: approximately **2.5-2.8 cm**
 - Detected wall planes: **6**
 - Selected wall pairs: **1 <-> 5** and **3 <-> 6**
+- Opening semantics: **no_candidates**, because the geometric opening detector
+  found zero reliable candidates on the selected wall
 - Room semantics: **model_unavailable** locally, with sampled-frame evidence and
   contact sheet generated
 
@@ -41,6 +43,12 @@ The optional learned room classifier is integrated as a separate semantic layer.
 It does not change geometry or measurement outputs. On this machine, optional AI
 dependencies/model weights are unavailable, so the semantic section reports
 `model_unavailable` rather than failing the finalizer.
+
+The optional learned opening classifier is also integrated as a separate fusion
+layer. It can label projected geometry candidates as door/window detections when
+model dependencies are available, but dimensions stay geometry-only. The current
+capture has no geometric opening candidates, so it reports `no_candidates` and
+writes an overview image documenting that fallback.
 
 ## Verification
 

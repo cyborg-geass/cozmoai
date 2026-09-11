@@ -23,6 +23,11 @@ The finalizer refreshes `submission/evidence/single_room` with JSON, PNG, and CS
 evidence that is suitable for GitHub review. Large point-cloud files are generated
 under `outputs/single_room` and are intentionally not tracked.
 
+The current opening semantic artifact reports `no_candidates` because the
+geometry stage did not find a reliable door/window candidate on the selected
+wall. The semantic layer therefore does not invent an RGB-only opening or metric
+dimension.
+
 The current room semantic artifact reports `model_unavailable` because optional
 AI dependencies and local model weights are not installed in this environment.
 This is an explicit fallback state; the metric geometry pipeline still completes.

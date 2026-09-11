@@ -26,6 +26,7 @@ Latest deterministic finalization run:
 | Floor residual P95 | 0.0254 m |
 | Detected wall planes | 6 |
 | Opening candidates on selected wall | 0 |
+| Opening semantics status | no_candidates |
 | Room semantics status | model_unavailable locally |
 
 The rectangular reference area is the product of the two selected wall-to-wall
@@ -59,7 +60,7 @@ uv run python scripts/finalize_pipeline.py
 ```
 
 The finalizer validates the raw capture, clears known stale generated artifacts,
-runs all eight pipeline stages, validates each stage output, and writes:
+runs all nine pipeline stages, validates each stage output, and writes:
 
 ```text
 outputs/single_room/final_result.json
@@ -77,16 +78,30 @@ Room semantics are exposed through:
 uv run python scripts/classify_room.py <capture_dir> <output_dir>
 ```
 
+Opening semantics are exposed through:
+
+```powershell
+uv run python scripts/classify_openings.py <capture_dir> <openings_json> <output_dir>
+```
+
 By default, the classifier tries to use `openai/clip-vit-base-patch32` from local
 model cache only. If `torch`, `transformers`, or model weights are unavailable,
 the command writes `status = "model_unavailable"` and still produces sampled
 frame evidence. This keeps the geometry pipeline reproducible without network or
 GPU access.
 
+The opening semantic classifier uses geometric opening candidates as the only
+source of metric width/height. The optional open-vocabulary detector can attach a
+door/window label to projected candidates when model dependencies and detections
+are available; it does not invent openings or clamp dimensions from RGB alone.
+For the supplied capture the geometric detector finds zero reliable candidates,
+so the current opening semantic artifact reports `status = "no_candidates"`.
+
 Useful flags:
 
 ```powershell
 uv run python scripts/finalize_pipeline.py --disable-ai
+uv run python scripts/finalize_pipeline.py --disable-opening-semantics
 uv run python scripts/finalize_pipeline.py --room-samples 16 --device cpu
 uv run python scripts/finalize_pipeline.py --allow-model-download
 ```

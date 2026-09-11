@@ -11,7 +11,10 @@
       "calibration": "camera_matrix.csv",
       "role": "primary evaluated capture",
       "status": "evaluated",
-      "semantic_evidence": "submission/evidence/single_room/room_semantics/room_semantics.json"
+      "semantic_evidence": {
+        "room": "submission/evidence/single_room/room_semantics/room_semantics.json",
+        "openings": "submission/evidence/single_room/opening_semantics/semantic_openings.json"
+      }
     }
   ],
   "devices_or_tiers": [

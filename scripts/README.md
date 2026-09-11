@@ -7,6 +7,7 @@ The root of this folder contains the final reproducible pipeline.
 ```powershell
 uv run python scripts/finalize_pipeline.py
 uv run python scripts/classify_room.py <capture_dir> <output_dir>
+uv run python scripts/classify_openings.py <capture_dir> <openings_json> <output_dir>
 uv run python scripts/package_submission.py
 ```
 
@@ -19,6 +20,7 @@ uv run python scripts/package_submission.py
 - `select_room_envelope.py`
 - `evaluate_measurements.py`
 - `detect_openings.py`
+- `classify_openings.py`
 - `classify_room.py`
 - `finalize_pipeline.py`
 - `package_submission.py`

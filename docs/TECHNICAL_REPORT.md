@@ -44,7 +44,10 @@ frame counts match before it computes artifacts.
    model-based uncertainty for the selected dimensions.
 7. `scripts/detect_openings.py` profiles a selected wall and reports opening
    candidates only when supported by observed geometry.
-8. `scripts/classify_room.py` samples RGB frames and runs optional zero-shot room
+8. `scripts/classify_openings.py` projects geometric opening candidates into RGB
+   frames and attaches optional door/window semantics only when a model-backed
+   detection overlaps the projected candidate.
+9. `scripts/classify_room.py` samples RGB frames and runs optional zero-shot room
    classification through a lazily loaded vision-language model adapter. If the
    model or dependencies are unavailable, it records `model_unavailable` without
    failing the geometry pipeline.
@@ -70,6 +73,7 @@ produced.
 | Reconstructed footprint area | 14.3138 m2 |
 | Trajectory inside selected envelope | 72.3% |
 | Opening candidates on wall 5 | 0 |
+| Opening semantics status | no_candidates |
 | Room semantics status | model_unavailable locally |
 | Sampled RGB frames for semantics | 15 decoded from 16 requested |
 
@@ -81,9 +85,11 @@ from the selected wall intersections.
 
 The perception layer lives under `src/cozmo_ai/perception`. It contains typed
 semantic schemas, deterministic RGB frame sampling, prompt ensembling, room-level
-probability aggregation, and a lazy zero-shot model adapter. The adapter uses a
-CLIP-compatible Hugging Face model when optional dependencies and weights are
-available, but default execution does not require network access.
+probability aggregation, RGB projection utilities, and lazy zero-shot model
+adapters. The room adapter uses a CLIP-compatible Hugging Face model when
+optional dependencies and weights are available. The opening adapter uses an
+open-vocabulary detector for door/window labels. Default execution does not
+require network access.
 
 On this machine, optional AI dependencies are not installed, so the current
 artifact reports `status = "model_unavailable"`, `label = "unknown"`, and
@@ -94,6 +100,13 @@ inspect.
 Semantic confidence is similarity-derived model confidence. It is not a 95%
 confidence interval and is not used for wall lengths, area, opening dimensions,
 or any other metric output.
+
+For openings, AI and geometry are fused only after the geometric detector has
+proposed a candidate. Candidate 3D support is projected into RGB with calibrated
+intrinsics, matched against 2D detections by IoU, and labeled only when the
+overlap and detector score pass thresholds. Width, height, and position remain
+geometry-derived. In the current capture no geometric opening candidate exists,
+so the semantic output is `no_candidates` and no RGB-only opening is reported.
 
 ## Confidence And Calibration
 
@@ -112,6 +125,10 @@ The opening detector runs deterministically on wall 5 and writes both a JSON
 artifact and wall profile CSV. The current pass reports zero reliable opening
 candidates. This is intentional: the available geometry does not support a
 height/width claim robustly enough for final reporting.
+
+`scripts/classify_openings.py` still writes a semantic overview artifact for this
+case. The overview explicitly records that no door/window dimensions were
+invented from RGB evidence.
 
 ## Ceiling Height
 

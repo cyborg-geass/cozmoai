@@ -4,6 +4,7 @@
 
 - Reproducible pipeline runner: `scripts/finalize_pipeline.py`
 - Room semantic CLI: `scripts/classify_room.py`
+- Opening semantic CLI: `scripts/classify_openings.py`
 - Submission bundle builder: `scripts/package_submission.py`
 - Source package: `src/cozmo_ai`
 - Optional perception package: `src/cozmo_ai/perception`
@@ -38,6 +39,8 @@ uv run python scripts/package_submission.py
 - Multi-room and repeat-room benchmark gates are not evaluated.
 - Damage detection is not evaluated.
 - Ground-truth absolute accuracy is not available.
+- Opening semantics are implemented, but the current capture has zero geometric
+  opening candidates, so the semantic output is `no_candidates`.
 - Room classification model weights/dependencies are not installed locally, so
   current semantic output is `model_unavailable`.
 
