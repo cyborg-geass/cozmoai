@@ -1,0 +1,33 @@
+{
+  "captures": [
+    {
+      "name": "single_room/c00a170fe1",
+      "path": "../cozmo-dataset/raw_dataset/single_room/c00a170fe1",
+      "rgb_video": "rgb.mp4",
+      "depth_frames": 1715,
+      "confidence_frames": 1715,
+      "pose_source": "odometry.csv",
+      "imu_source": "imu.csv",
+      "calibration": "camera_matrix.csv",
+      "role": "primary evaluated capture",
+      "status": "evaluated"
+    }
+  ],
+  "devices_or_tiers": [
+    {
+      "tier": "photo",
+      "status": "not_evaluated",
+      "reason": "No validated photo-only benchmark capture is available locally."
+    },
+    {
+      "tier": "video",
+      "status": "implemented_interface",
+      "reason": "RGB video is present and retained as part of the capture, but reconstruction depends on depth and odometry."
+    },
+    {
+      "tier": "depth_lidar",
+      "status": "evaluated",
+      "reason": "Depth frames, confidence frames, calibration, and odometry are used to produce the final point cloud and measurements."
+    }
+  ]
+}

@@ -1,0 +1,253 @@
+{
+  "schema_version": "1.0",
+  "source": {
+    "walls": "C:\\Users\\ankit\\Documents\\cozmoai_assignment\\cozmo-ai\\outputs\\single_room\\walls.json",
+    "room_envelope": "C:\\Users\\ankit\\Documents\\cozmoai_assignment\\cozmo-ai\\outputs\\single_room\\room_envelope.json",
+    "floor_cloud": "C:\\Users\\ankit\\Documents\\cozmoai_assignment\\cozmo-ai\\outputs\\single_room\\floor_plane.ply"
+  },
+  "floor": {
+    "plane": [
+      -0.00835487032482282,
+      0.9999465273110846,
+      0.006094149682927097,
+      1.448950863823141
+    ],
+    "point_count": 59789,
+    "residuals": {
+      "count": 59789,
+      "median_m": 0.009046913145043245,
+      "p95_m": 0.025383398085633634,
+      "rmse_m": 0.013172286786279224,
+      "mad_m": 0.005143490160949282,
+      "robust_sigma_m": 0.0076257385126234055
+    },
+    "position_uncertainty": {
+      "sigma_m": 0.0076257385126234055,
+      "ci95_half_width_m": 0.014946447484741875
+    }
+  },
+  "walls": {
+    "1": {
+      "plane": [
+        0.9220901620325892,
+        0.007498585438698687,
+        0.3869024480397249,
+        -2.3628787958117874
+      ],
+      "point_count": 30960,
+      "residuals": {
+        "count": 30960,
+        "median_m": 0.014836372675469889,
+        "p95_m": 0.02809308427007633,
+        "rmse_m": 0.01691390183641466,
+        "mad_m": 0.0067213795176863655,
+        "robust_sigma_m": 0.009965117272921806
+      },
+      "position_uncertainty": {
+        "sigma_m": 0.009965117272921806,
+        "ci95_half_width_m": 0.01953162985492674
+      }
+    },
+    "2": {
+      "plane": [
+        0.36184030682409934,
+        0.012151314676695193,
+        -0.9321608970070938,
+        3.5718262399469842
+      ],
+      "point_count": 19234,
+      "residuals": {
+        "count": 19234,
+        "median_m": 0.014530649684980634,
+        "p95_m": 0.0279902374660708,
+        "rmse_m": 0.016754517732256124,
+        "mad_m": 0.0070843305669499035,
+        "robust_sigma_m": 0.010503228498559926
+      },
+      "position_uncertainty": {
+        "sigma_m": 0.010503228498559926,
+        "ci95_half_width_m": 0.020586327857177456
+      }
+    },
+    "3": {
+      "plane": [
+        0.40045803258126744,
+        0.03021397748055474,
+        -0.9158168374221699,
+        4.8945520193603365
+      ],
+      "point_count": 18820,
+      "residuals": {
+        "count": 18820,
+        "median_m": 0.013186794547192182,
+        "p95_m": 0.027750786006544414,
+        "rmse_m": 0.016032681980232506,
+        "mad_m": 0.006940381130102313,
+        "robust_sigma_m": 0.01028980906348969
+      },
+      "position_uncertainty": {
+        "sigma_m": 0.01028980906348969,
+        "ci95_half_width_m": 0.020168025764439792
+      }
+    },
+    "4": {
+      "plane": [
+        -0.40761586983186093,
+        0.005300688576505542,
+        0.9131381085913731,
+        -1.8652108854548812
+      ],
+      "point_count": 18034,
+      "residuals": {
+        "count": 18034,
+        "median_m": 0.010020019623028453,
+        "p95_m": 0.025123103800712098,
+        "rmse_m": 0.01334268085357459,
+        "mad_m": 0.005810875978957686,
+        "robust_sigma_m": 0.008615204726402665
+      },
+      "position_uncertainty": {
+        "sigma_m": 0.008615204726402665,
+        "ci95_half_width_m": 0.016885801263749223
+      }
+    },
+    "5": {
+      "plane": [
+        0.8931384601383122,
+        0.005446531312481966,
+        0.44974884804569193,
+        -0.10080515066411389
+      ],
+      "point_count": 13702,
+      "residuals": {
+        "count": 13702,
+        "median_m": 0.01326432956510739,
+        "p95_m": 0.027598887738797907,
+        "rmse_m": 0.016012020069757223,
+        "mad_m": 0.007083604194520796,
+        "robust_sigma_m": 0.010502151578796531
+      },
+      "position_uncertainty": {
+        "sigma_m": 0.010502151578796531,
+        "ci95_half_width_m": 0.0205842170944412
+      }
+    },
+    "6": {
+      "plane": [
+        0.40559031181503696,
+        0.009919265464936185,
+        -0.9140011526986261,
+        -1.1190124615470793
+      ],
+      "point_count": 10322,
+      "residuals": {
+        "count": 10322,
+        "median_m": 0.009565212726497907,
+        "p95_m": 0.02679397450320282,
+        "rmse_m": 0.013688374390433234,
+        "mad_m": 0.005429391516498905,
+        "robust_sigma_m": 0.008049615862361276
+      },
+      "position_uncertainty": {
+        "sigma_m": 0.008049615862361276,
+        "ci95_half_width_m": 0.0157772470902281
+      }
+    }
+  },
+  "room": {
+    "dimensions": {
+      "dimension_a": {
+        "wall_pair": [
+          1,
+          5
+        ],
+        "value_m": 2.2620736451476735,
+        "wall_normal_angle_deg": 3.967084990736543,
+        "uncertainty": {
+          "sigma_m": 0.014477525688013923,
+          "ci95_m": [
+            2.233697694799166,
+            2.290449595496181
+          ],
+          "ci95_half_width_m": 0.02837595034850729,
+          "method": "wall_plane_residual_propagation",
+          "status": "model_based_uncertainty"
+        }
+      },
+      "dimension_b": {
+        "wall_pair": [
+          3,
+          6
+        ],
+        "value_m": 6.013564480907416,
+        "wall_normal_angle_deg": 1.2039322380372233,
+        "uncertainty": {
+          "sigma_m": 0.013064321111127545,
+          "ci95_m": [
+            5.987958411529606,
+            6.039170550285226
+          ],
+          "ci95_half_width_m": 0.025606069377809987,
+          "method": "wall_plane_residual_propagation",
+          "status": "model_based_uncertainty"
+        }
+      }
+    },
+    "area": {
+      "rectangular_reference": {
+        "value_m2": 13.603125725656815,
+        "uncertainty": {
+          "sigma_m2": 0.09194051571317614,
+          "ci95_m2": [
+            13.42292231485899,
+            13.78332913645464
+          ],
+          "ci95_half_width_m2": 0.18020341079782523,
+          "method": "first_order_area_propagation",
+          "status": "model_based_uncertainty"
+        },
+        "interpretation": "Reference area obtained by multiplying the two selected wall-to-wall dimensions. It is not the reconstructed polygon footprint."
+      },
+      "reconstructed_footprint": {
+        "value_m2": 14.31384308878245,
+        "geometry": "quadrilateral",
+        "corners": [
+          {
+            "u_m": -4.901124501390252,
+            "v_m": -2.366002536155686
+          },
+          {
+            "u_m": 1.0722811710768734,
+            "v_m": -2.366002536155686
+          },
+          {
+            "u_m": 1.1169684072824888,
+            "v_m": -0.17954506692028083
+          },
+          {
+            "u_m": -4.861816762741117,
+            "v_m": 0.23499310557600075
+          }
+        ],
+        "edge_lengths_m": [
+          5.973405672467125,
+          2.1869140846990285,
+          5.993138910933965,
+          2.601292645325577
+        ],
+        "uncertainty": {
+          "ci95_m2": null,
+          "status": "not_estimated",
+          "reason": "Corner covariance is not currently available. The dimension-based uncertainty model cannot be directly applied to the irregular quadrilateral footprint."
+        },
+        "method": "shoelace_formula"
+      }
+    }
+  },
+  "calibration": {
+    "ground_truth_available": false,
+    "ground_truth_type": null,
+    "uncertainty_status": "not_ground_truth_calibrated",
+    "note": "Intervals are derived from plane residuals and first-order uncertainty propagation. They should not be interpreted as demonstrated absolute accuracy."
+  }
+}

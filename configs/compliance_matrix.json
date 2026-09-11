@@ -28,7 +28,7 @@
     {
       "requirement": "Wall lengths",
       "status": "evaluated",
-      "evidence": "2.2496 m and 6.0050 m with propagated 95% CIs."
+      "evidence": "2.2621 m and 6.0136 m with propagated 95% CIs."
     },
     {
       "requirement": "Ceiling height <= 1.5 cm",
@@ -38,7 +38,7 @@
     {
       "requirement": "Floor area",
       "status": "evaluated",
-      "evidence": "Reconstructed footprint area is 14.4260 m\u00b2."
+      "evidence": "Reconstructed footprint area is 14.3138 m\u00b2."
     },
     {
       "requirement": "Doors/windows",

@@ -1,0 +1,143 @@
+{
+  "pipeline": "cozmo_ai_single_room_final",
+  "primary_capture": "C:\\Users\\ankit\\Documents\\cozmoai_assignment\\cozmo-dataset\\raw_dataset\\single_room\\c00a170fe1",
+  "capture": {
+    "path": "C:\\Users\\ankit\\Documents\\cozmoai_assignment\\cozmo-dataset\\raw_dataset\\single_room\\c00a170fe1",
+    "status": "validated",
+    "files": {
+      "camera_matrix.csv": {
+        "path": "C:\\Users\\ankit\\Documents\\cozmoai_assignment\\cozmo-dataset\\raw_dataset\\single_room\\c00a170fe1\\camera_matrix.csv",
+        "bytes": 63
+      },
+      "odometry.csv": {
+        "path": "C:\\Users\\ankit\\Documents\\cozmoai_assignment\\cozmo-dataset\\raw_dataset\\single_room\\c00a170fe1\\odometry.csv",
+        "bytes": 266631
+      },
+      "imu.csv": {
+        "path": "C:\\Users\\ankit\\Documents\\cozmoai_assignment\\cozmo-dataset\\raw_dataset\\single_room\\c00a170fe1\\imu.csv",
+        "bytes": 512501
+      },
+      "rgb.mp4": {
+        "path": "C:\\Users\\ankit\\Documents\\cozmoai_assignment\\cozmo-dataset\\raw_dataset\\single_room\\c00a170fe1\\rgb.mp4",
+        "bytes": 43716638
+      }
+    },
+    "directories": {
+      "depth": {
+        "path": "C:\\Users\\ankit\\Documents\\cozmoai_assignment\\cozmo-dataset\\raw_dataset\\single_room\\c00a170fe1\\depth",
+        "png_count": 1715
+      },
+      "confidence": {
+        "path": "C:\\Users\\ankit\\Documents\\cozmoai_assignment\\cozmo-dataset\\raw_dataset\\single_room\\c00a170fe1\\confidence",
+        "png_count": 1715
+      }
+    }
+  },
+  "validated_outputs": [
+    "outputs\\single_room\\pointcloud_production.ply",
+    "outputs\\single_room\\floor_plane.ply",
+    "outputs\\single_room\\walls.json",
+    "outputs\\single_room\\room_geometry.json",
+    "outputs\\single_room\\room_geometry.png",
+    "outputs\\single_room\\room_envelope.json",
+    "outputs\\single_room\\room_envelope.png",
+    "outputs\\single_room\\measurement_evaluation.json",
+    "outputs\\single_room\\openings_wall5.json",
+    "outputs\\single_room\\wall5_opening_profile.csv"
+  ],
+  "artifacts": {
+    "outputs\\single_room\\pointcloud_production.ply": {
+      "path": "outputs\\single_room\\pointcloud_production.ply",
+      "status": "generated",
+      "bytes": 7888181
+    },
+    "outputs\\single_room\\floor_plane.ply": {
+      "path": "outputs\\single_room\\floor_plane.ply",
+      "status": "generated",
+      "bytes": 1435084
+    },
+    "outputs\\single_room\\walls.json": {
+      "path": "outputs\\single_room\\walls.json",
+      "status": "validated",
+      "bytes": 3389,
+      "wall_count": 6
+    },
+    "outputs\\single_room\\room_geometry.json": {
+      "path": "outputs\\single_room\\room_geometry.json",
+      "status": "validated",
+      "bytes": 6226,
+      "wall_count": 6,
+      "parallel_pair_count": 7
+    },
+    "outputs\\single_room\\room_geometry.png": {
+      "path": "outputs\\single_room\\room_geometry.png",
+      "status": "generated",
+      "bytes": 89157
+    },
+    "outputs\\single_room\\room_envelope.json": {
+      "path": "outputs\\single_room\\room_envelope.json",
+      "status": "validated",
+      "bytes": 1431,
+      "dimensions_m": {
+        "dimension_a": 2.2620736451476735,
+        "dimension_b": 6.013564480907416
+      },
+      "area_m2": 14.31384308878245,
+      "trajectory_inside_ratio": 0.7230320699708455,
+      "selected_wall_pairs": [
+        {
+          "walls": [
+            1,
+            5
+          ],
+          "dimension_m": 2.2620736451476735
+        },
+        {
+          "walls": [
+            3,
+            6
+          ],
+          "dimension_m": 6.013564480907416
+        }
+      ]
+    },
+    "outputs\\single_room\\room_envelope.png": {
+      "path": "outputs\\single_room\\room_envelope.png",
+      "status": "generated",
+      "bytes": 112933
+    },
+    "outputs\\single_room\\measurement_evaluation.json": {
+      "path": "outputs\\single_room\\measurement_evaluation.json",
+      "status": "validated",
+      "bytes": 7660,
+      "dimension_a_m": 2.2620736451476735,
+      "dimension_b_m": 6.013564480907416,
+      "area_m2": 14.31384308878245,
+      "floor_p95_residual_m": 0.025383398085633634
+    },
+    "outputs\\single_room\\openings_wall5.json": {
+      "path": "outputs\\single_room\\openings_wall5.json",
+      "status": "validated",
+      "bytes": 204,
+      "candidate_count": 0
+    },
+    "outputs\\single_room\\wall5_opening_profile.csv": {
+      "path": "outputs\\single_room\\wall5_opening_profile.csv",
+      "status": "generated",
+      "bytes": 3301
+    }
+  },
+  "not_evaluated": [
+    "photo-tier registration error <= 1.0 px",
+    "photo-tier drift <= 0.5% of diagonal",
+    "3+ room multi-room benchmark",
+    "two-class damage benchmark",
+    "laser/tape ground truth",
+    "repeat-room reproducibility"
+  ],
+  "ceiling": {
+    "status": "not_demonstrated",
+    "provisional_height_m": 3.06,
+    "reason": "Available ceiling evidence does not support the required 1.5 cm gate."
+  }
+}

@@ -1,7 +1,7 @@
 [project]
 name = "cozmo-ai"
 version = "0.1.0"
-description = "Add your description here"
+description = "Single-room depth reconstruction and measurement pipeline for the Cozmo AI applied AI assignment"
 readme = "README.md"
 authors = [
     { name = "cyborg-geass", email = "ankit0502.das@gmail.com" }
