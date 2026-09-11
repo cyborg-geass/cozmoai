@@ -12,12 +12,15 @@ import open3d as o3d
 
 NORMAL_Y_THRESHOLD = 0.15
 
-MIN_WALL_POINTS = 8_000
+MIN_WALL_POINTS = 4_000
 
 RANSAC_DISTANCE_THRESHOLD = 0.03
 RANSAC_ITERATIONS = 3000
 
-MAX_PLANES = 20
+MAX_PLANES = 30
+RANSAC_RANDOM_SEED = 6
+DUPLICATE_PLANE_ANGLE_DEGREES = 5.0
+DUPLICATE_PLANE_DISTANCE_M = 0.35
 
 MIN_HEIGHT_ABOVE_FLOOR = 0.10
 MAX_HEIGHT_ABOVE_FLOOR = 3.5
@@ -75,6 +78,90 @@ def normalize_plane(plane):
     return plane / norm
 
 
+def aligned_plane_separation(plane_a, plane_b):
+    plane_a = normalize_plane(plane_a)
+    plane_b = normalize_plane(plane_b)
+
+    if np.dot(
+        plane_a[:3],
+        plane_b[:3],
+    ) < 0:
+        plane_b = -plane_b
+
+    return float(
+        abs(
+            plane_a[3]
+            - plane_b[3]
+        )
+    )
+
+
+def is_duplicate_plane(
+    candidate_plane,
+    existing_candidates,
+):
+    for existing in existing_candidates:
+        angle = angle_between_normals(
+            candidate_plane[:3],
+            existing["plane"][:3],
+        )
+
+        separation = aligned_plane_separation(
+            candidate_plane,
+            existing["plane"],
+        )
+
+        if (
+            angle <= DUPLICATE_PLANE_ANGLE_DEGREES
+            and separation <= DUPLICATE_PLANE_DISTANCE_M
+        ):
+            return True
+
+    return False
+
+
+def fit_plane_svd(points):
+    if len(points) < 3:
+        raise ValueError(
+            "At least three points are required to fit a plane."
+        )
+
+    centroid = points.mean(axis=0)
+    centered = points - centroid
+
+    _, _, vh = np.linalg.svd(
+        centered,
+        full_matrices=False,
+    )
+
+    normal = vh[-1]
+    norm = np.linalg.norm(normal)
+
+    if norm < 1e-12:
+        raise ValueError(
+            "Could not fit plane with non-zero normal."
+        )
+
+    normal = normal / norm
+
+    if normal[1] < 0:
+        normal = -normal
+
+    d = -float(
+        centroid @ normal
+    )
+
+    return np.array(
+        [
+            normal[0],
+            normal[1],
+            normal[2],
+            d,
+        ],
+        dtype=np.float64,
+    )
+
+
 def load_floor_plane(floor_path):
 
     floor_cloud = o3d.io.read_point_cloud(
@@ -87,28 +174,17 @@ def load_floor_plane(floor_path):
             f"Floor point cloud is empty: {floor_path}"
         )
 
-    plane_model, inliers = (
-        floor_cloud.segment_plane(
-            distance_threshold=0.03,
-            ransac_n=3,
-            num_iterations=3000,
-        )
+    points = np.asarray(
+        floor_cloud.points
     )
 
-    if len(inliers) < 1000:
+    if len(points) < 1000:
 
         raise RuntimeError(
-            "Could not reliably refit the floor plane."
+            "Could not reliably fit the floor plane."
         )
 
-    plane = normalize_plane(
-        plane_model
-    )
-
-    if plane[1] < 0:
-        plane = -plane
-
-    return plane
+    return fit_plane_svd(points)
 
 
 def height_above_floor(
@@ -171,6 +247,14 @@ def main():
     print(
         f"\nInput points: "
         f"{len(cloud.points):,}"
+    )
+
+    o3d.utility.random.seed(
+        RANSAC_RANDOM_SEED
+    )
+
+    print(
+        f"RANSAC random seed: {RANSAC_RANDOM_SEED}"
     )
 
     # --------------------------------------------------------
@@ -301,7 +385,13 @@ def main():
             <= NORMAL_Y_THRESHOLD
         )
 
-        if is_vertical:
+        if (
+            is_vertical
+            and not is_duplicate_plane(
+                plane,
+                candidates,
+            )
+        ):
 
             plane_points = np.asarray(
                 remaining.points

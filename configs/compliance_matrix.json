@@ -43,7 +43,7 @@
     {
       "requirement": "Doors/windows",
       "status": "partial",
-      "evidence": "Opening candidate detected; reliable opening height is not observed."
+      "evidence": "Opening detector runs on the selected wall; the deterministic pass does not report a reliable opening candidate or inferred height."
     },
     {
       "requirement": "Damage regions",

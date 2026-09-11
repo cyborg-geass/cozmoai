@@ -6,6 +6,7 @@ import numpy as np
 from cozmo_ai.geometry.pose import camera_to_world
 from scripts.build_pointcloud import resolve_pose_convention
 from scripts.detect_floor import select_floor_candidate
+from scripts.detect_openings import estimate_opening_height
 
 
 class PoseConventionTests(unittest.TestCase):
@@ -111,6 +112,41 @@ class FloorCandidateSelectionTests(unittest.TestCase):
 
         self.assertIsNone(selected)
         self.assertEqual(horizontal, [])
+
+
+class OpeningHeightTests(unittest.TestCase):
+    def test_missing_top_boundary_reports_unknown_height(self):
+        occupied = np.zeros((4, 50), dtype=bool)
+
+        height, status, evidence = estimate_opening_height(
+            occupied,
+            start=0,
+            end=3,
+            height_bin=0.05,
+            min_opening_height=1.8,
+            max_opening_height=2.5,
+        )
+
+        self.assertIsNone(height)
+        self.assertEqual(status, "not_observed")
+        self.assertIn("reason", evidence)
+
+    def test_supported_top_boundary_reports_observed_height(self):
+        occupied = np.zeros((4, 50), dtype=bool)
+        occupied[:, 40:42] = True
+
+        height, status, evidence = estimate_opening_height(
+            occupied,
+            start=0,
+            end=3,
+            height_bin=0.05,
+            min_opening_height=1.8,
+            max_opening_height=2.5,
+        )
+
+        self.assertEqual(height, 2.0)
+        self.assertEqual(status, "observed")
+        self.assertEqual(evidence["top_support_bins"], 2)
 
 
 if __name__ == "__main__":

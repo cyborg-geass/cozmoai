@@ -19,6 +19,7 @@ MIN_RELATIVE_SUPPORT = 0.10
 RANSAC_DISTANCE_THRESHOLD = 0.03
 RANSAC_ITERATIONS = 3000
 MAX_PLANES = 20
+RANSAC_RANDOM_SEED = 7
 
 
 # ============================================================
@@ -276,6 +277,14 @@ def main():
 
     print(
         f"\nInput points: {len(points):,}"
+    )
+
+    o3d.utility.random.seed(
+        RANSAC_RANDOM_SEED
+    )
+
+    print(
+        f"RANSAC random seed: {RANSAC_RANDOM_SEED}"
     )
 
     # --------------------------------------------------------

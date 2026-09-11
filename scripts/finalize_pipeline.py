@@ -71,6 +71,7 @@ def main() -> int:
         "room_envelope.json",
         "room_envelope.png",
         "measurement_evaluation.json",
+        "openings_wall5.json",
     ]
 
     manifest = {

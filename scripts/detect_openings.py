@@ -31,6 +31,13 @@ MAX_OPENING_HEIGHT = 2.5
 MIN_OPENING_WIDTH = 0.5
 MAX_OPENING_WIDTH = 2.5
 
+# The top of an opening is only considered observed when there
+# is sustained wall material across the opening span above the
+# minimum doorway height. Sparse/noisy points are reported as
+# unknown instead of being clamped into a made-up height.
+TOP_SUPPORT_FRACTION = 0.50
+MIN_TOP_SUPPORT_BINS = 2
+
 
 # ------------------------------------------------------------
 # Helpers
@@ -95,6 +102,100 @@ def project_to_floor(points, origin, U, V, N):
     h = d @ N
 
     return u, v, h
+
+
+def estimate_opening_height(
+    occupied,
+    start,
+    end,
+    height_bin,
+    min_opening_height,
+    max_opening_height,
+    support_fraction=TOP_SUPPORT_FRACTION,
+    min_support_bins=MIN_TOP_SUPPORT_BINS,
+):
+    opening_columns = occupied[start:end + 1]
+
+    if opening_columns.size == 0:
+        return None, "not_observed", {
+            "reason": "opening span has no occupancy columns",
+            "top_support_fraction": support_fraction,
+            "min_top_support_bins": min_support_bins,
+        }
+
+    occupancy_by_height = opening_columns.mean(axis=0)
+
+    min_bin = int(
+        np.ceil(
+            min_opening_height
+            / height_bin
+        )
+    )
+
+    max_bin = min(
+        len(occupancy_by_height),
+        int(
+            np.floor(
+                max_opening_height
+                / height_bin
+            )
+        ) + 1,
+    )
+
+    supported = (
+        occupancy_by_height[min_bin:max_bin]
+        >= support_fraction
+    )
+
+    run_start = None
+
+    for index, value in enumerate(supported):
+        if value and run_start is None:
+            run_start = index
+        elif not value and run_start is not None:
+            run_length = index - run_start
+
+            if run_length >= min_support_bins:
+                height = (
+                    min_bin
+                    + run_start
+                ) * height_bin
+
+                return float(height), "observed", {
+                    "top_support_fraction": support_fraction,
+                    "top_support_bins": int(run_length),
+                    "top_support_height_bin": int(
+                        min_bin + run_start
+                    ),
+                }
+
+            run_start = None
+
+    if run_start is not None:
+        run_length = len(supported) - run_start
+
+        if run_length >= min_support_bins:
+            height = (
+                min_bin
+                + run_start
+            ) * height_bin
+
+            return float(height), "observed", {
+                "top_support_fraction": support_fraction,
+                "top_support_bins": int(run_length),
+                "top_support_height_bin": int(
+                    min_bin + run_start
+                ),
+            }
+
+    return None, "not_observed", {
+        "reason": (
+            "no sustained wall material observed across the opening "
+            "span above the minimum opening height"
+        ),
+        "top_support_fraction": support_fraction,
+        "min_top_support_bins": min_support_bins,
+    }
 
 
 # ------------------------------------------------------------
@@ -302,16 +403,6 @@ def main():
         f"{h.min():.3f} -> {h.max():.3f} m"
     )
 
-    print("\nWall-local points:", len(s))
-    print(
-        "Horizontal range:",
-        f"{s.min():.3f} -> {s.max():.3f} m"
-    )
-    print(
-        "Height range:",
-        f"{h.min():.3f} -> {h.max():.3f} m"
-    )
-
     # --------------------------------------------------------
     # Build occupancy grid
     # --------------------------------------------------------
@@ -431,25 +522,15 @@ def main():
         if width > MAX_OPENING_WIDTH:
             continue
 
-        # Estimate top of the opening.
-        center_idx = (start + end) // 2
-
-        column = occupied[center_idx]
-
-        occupied_height_indices = np.where(column)[0]
-
-        if len(occupied_height_indices) == 0:
-            opening_top = MIN_OPENING_HEIGHT
-        else:
-            # Find the first substantial wall material above
-            # the floor.
-            opening_top = (
-                occupied_height_indices.max() + 1
-            ) * HEIGHT_BIN
-
-        opening_height = min(
-            max(opening_top, MIN_OPENING_HEIGHT),
-            MAX_OPENING_HEIGHT
+        opening_height, height_status, height_evidence = (
+            estimate_opening_height(
+                occupied,
+                start,
+                end,
+                HEIGHT_BIN,
+                MIN_OPENING_HEIGHT,
+                MAX_OPENING_HEIGHT,
+            )
         )
 
         score = float(
@@ -460,14 +541,27 @@ def main():
             "left_s": float(left),
             "right_s": float(right),
             "width_m": float(width),
-            "height_m": float(opening_height),
+            "height_m": (
+                float(opening_height)
+                if opening_height is not None
+                else None
+            ),
+            "height_status": height_status,
+            "height_evidence": height_evidence,
             "score": score,
         })
+
+        height_label = (
+            f"{opening_height:.2f} m"
+            if opening_height is not None
+            else "not observed"
+        )
 
         print(
             f"  s={left:.2f} -> {right:.2f} "
             f"width={width:.2f} m "
-            f"height≈{opening_height:.2f} m "
+            f"height={height_label} "
+            f"height_status={height_status} "
             f"score={score:.3f}"
         )
 
