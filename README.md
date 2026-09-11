@@ -27,7 +27,7 @@ Latest deterministic finalization run:
 | Detected wall planes | 6 |
 | Opening candidates on selected wall | 0 |
 | Opening semantics status | no_candidates |
-| Room semantics status | model_unavailable locally |
+| Room semantics status | Optional CLIP pipeline implemented; model execution unavailable in local CPU-only submission environment |
 
 The rectangular reference area is the product of the two selected wall-to-wall
 separations. The reported floor-plan area is the reconstructed quadrilateral
@@ -96,6 +96,11 @@ door/window label to projected candidates when model dependencies and detections
 are available; it does not invent openings or clamp dimensions from RGB alone.
 For the supplied capture the geometric detector finds zero reliable candidates,
 so the current opening semantic artifact reports `status = "no_candidates"`.
+
+The semantic model adapter, frame sampling, aggregation, schemas, and evidence
+pipeline are implemented and unit-tested. Model inference is optional and disabled
+in the submitted local environment because pretrained weights/dependencies were not
+installed.
 
 Useful flags:
 
