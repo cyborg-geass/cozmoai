@@ -4,23 +4,16 @@ from scipy.spatial.transform import Rotation
 
 
 def quaternion_to_rotation_matrix(
-    qx: float,
-    qy: float,
-    qz: float,
-    qw: float,
-) -> np.ndarray:
-    """
-    Convert [qx, qy, qz, qw] quaternion
-    to a 3x3 rotation matrix.
-    """
-
-    quaternion = np.array(
-        [qx, qy, qz, qw],
-        dtype=np.float64,
-    )
-
+    qx,
+    qy,
+    qz,
+    qw,
+):
     return Rotation.from_quat(
-        quaternion
+        np.array(
+            [qx, qy, qz, qw],
+            dtype=np.float64,
+        )
     ).as_matrix()
 
 
@@ -68,5 +61,6 @@ def camera_to_world(
         )
 
     return (
-        rotation @ points_camera.T
-    ).T + translation
+        points_camera @ rotation
+        + translation
+    )
