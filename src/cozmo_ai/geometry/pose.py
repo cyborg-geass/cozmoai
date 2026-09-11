@@ -21,13 +21,19 @@ def camera_to_world(
     points_camera: np.ndarray,
     rotation: np.ndarray,
     translation: np.ndarray,
+    convention: str = "rotation_transpose",
 ) -> np.ndarray:
     """
     Transform camera-frame points into world coordinates.
 
-    Dataset convention selected from diagnostic evaluation:
+    Points are stored as row vectors, so the matrix expression is the
+    transpose of the equivalent column-vector notation.
 
-        P_world = R @ P_camera + t
+    Supported conventions:
+
+    - ``rotation``: row-vector form of ``P_world = R @ P_camera + t``.
+    - ``rotation_transpose``: row-vector form of
+      ``P_world = R.T @ P_camera + t``.
     """
 
     if points_camera.ndim != 2:
@@ -60,7 +66,19 @@ def camera_to_world(
             "translation must have shape (3,)"
         )
 
-    return (
-        points_camera @ rotation
-        + translation
+    if convention == "rotation":
+        return (
+            points_camera @ rotation.T
+            + translation
+        )
+
+    if convention == "rotation_transpose":
+        return (
+            points_camera @ rotation
+            + translation
+        )
+
+    raise ValueError(
+        "Unsupported pose convention: "
+        f"{convention!r}"
     )

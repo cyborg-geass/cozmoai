@@ -23,6 +23,11 @@ FRAME_STRIDE = 4
 PIXEL_STRIDE = 4
 VOXEL_SIZE = 0.02
 
+POSE_CONVENTION_BY_CAPTURE = {
+    "single_room": "rotation",
+    "single_scan_with_ceiling": "rotation_transpose",
+}
+
 
 def find_depth_files(depth_dir):
     # Windows is case-insensitive, so "*.png" already matches
@@ -45,18 +50,41 @@ def find_depth_files(depth_dir):
 
     return files
 
+
+def resolve_pose_convention(
+    capture_dir,
+    requested="auto",
+):
+    if requested != "auto":
+        return requested
+
+    for part in reversed(capture_dir.parts):
+        if part in POSE_CONVENTION_BY_CAPTURE:
+            return POSE_CONVENTION_BY_CAPTURE[part]
+
+    return "rotation_transpose"
+
 def main():
 
-    if len(sys.argv) != 3:
+    if len(sys.argv) not in (3, 4):
         print(
             "Usage:\n"
             "  uv run python scripts/build_pointcloud.py "
-            "<capture_dir> <output_ply>"
+            "<capture_dir> <output_ply> [pose_convention]"
         )
         sys.exit(1)
 
     capture_dir = Path(sys.argv[1])
     output_path = Path(sys.argv[2])
+    requested_pose_convention = (
+        sys.argv[3]
+        if len(sys.argv) == 4
+        else "auto"
+    )
+    pose_convention = resolve_pose_convention(
+        capture_dir,
+        requested_pose_convention,
+    )
 
     if not capture_dir.exists():
         raise FileNotFoundError(
@@ -150,6 +178,7 @@ def main():
     print("\nProcessing:")
     print("Frame stride:", FRAME_STRIDE)
     print("Pixel stride:", PIXEL_STRIDE)
+    print("Pose convention:", pose_convention)
 
     for frame_idx in range(
         0,
@@ -221,6 +250,7 @@ def main():
             points_camera,
             rotation,
             translation,
+            convention=pose_convention,
         )
 
         # Remove non-finite values.

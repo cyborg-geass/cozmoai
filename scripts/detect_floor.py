@@ -11,13 +11,225 @@ import open3d as o3d
 
 NORMAL_Y_THRESHOLD = 0.95
 
-MIN_FLOOR_HEIGHT_BELOW_CAMERA = 0.5
-MAX_FLOOR_HEIGHT_BELOW_CAMERA = 2.5
-
 MIN_FLOOR_POINTS = 20_000
+MIN_FOOTPRINT_AREA_M2 = 1.0
+MIN_RELATIVE_FOOTPRINT_AREA = 0.35
+MIN_RELATIVE_SUPPORT = 0.10
 
 RANSAC_DISTANCE_THRESHOLD = 0.03
 RANSAC_ITERATIONS = 3000
+MAX_PLANES = 20
+
+
+# ============================================================
+# Utilities
+# ============================================================
+
+def normalize_plane(plane_model):
+    plane = np.asarray(
+        plane_model,
+        dtype=np.float64,
+    )
+
+    normal_norm = np.linalg.norm(
+        plane[:3]
+    )
+
+    if normal_norm < 1e-12:
+        raise ValueError(
+            "Invalid plane with zero normal."
+        )
+
+    plane = plane / normal_norm
+
+    if plane[1] < 0:
+        plane = -plane
+
+    return plane
+
+
+def plane_angle_to_y(plane):
+    return float(
+        np.degrees(
+            np.arccos(
+                np.clip(
+                    abs(plane[1]),
+                    0.0,
+                    1.0,
+                )
+            )
+        )
+    )
+
+
+def candidate_metrics(
+    plane,
+    points,
+    original_inliers,
+    iteration,
+):
+    x_low, y_low, z_low = np.percentile(
+        points,
+        1,
+        axis=0,
+    )
+
+    x_high, y_high, z_high = np.percentile(
+        points,
+        99,
+        axis=0,
+    )
+
+    footprint_x = float(
+        max(0.0, x_high - x_low)
+    )
+
+    footprint_z = float(
+        max(0.0, z_high - z_low)
+    )
+
+    footprint_area = (
+        footprint_x
+        * footprint_z
+    )
+
+    residuals = np.abs(
+        points @ plane[:3]
+        + plane[3]
+    )
+
+    return {
+        "iteration": int(iteration),
+        "plane": plane,
+        "normal": plane[:3].copy(),
+        "points": int(len(points)),
+        "centroid": points.mean(axis=0),
+        "median_y": float(np.median(points[:, 1])),
+        "y_range_p01_p99": [
+            float(y_low),
+            float(y_high),
+        ],
+        "footprint_x_m": footprint_x,
+        "footprint_z_m": footprint_z,
+        "footprint_area_m2": float(footprint_area),
+        "angle_to_y": plane_angle_to_y(plane),
+        "residual_p95_m": float(
+            np.percentile(residuals, 95)
+        ),
+        "inliers": original_inliers.copy(),
+    }
+
+
+def select_floor_candidate(candidates):
+    horizontal = [
+        candidate
+        for candidate in candidates
+        if abs(candidate["normal"][1]) >= NORMAL_Y_THRESHOLD
+    ]
+
+    if not horizontal:
+        return None, []
+
+    max_points = max(
+        candidate["points"]
+        for candidate in horizontal
+    )
+
+    max_area = max(
+        candidate["footprint_area_m2"]
+        for candidate in horizontal
+    )
+
+    min_points = max(
+        MIN_FLOOR_POINTS,
+        int(max_points * MIN_RELATIVE_SUPPORT),
+    )
+
+    min_area = max(
+        MIN_FOOTPRINT_AREA_M2,
+        max_area * MIN_RELATIVE_FOOTPRINT_AREA,
+    )
+
+    viable = [
+        candidate
+        for candidate in horizontal
+        if (
+            candidate["points"] >= min_points
+            and candidate["footprint_area_m2"] >= min_area
+        )
+    ]
+
+    if not viable:
+        return None, horizontal
+
+    viable.sort(
+        key=lambda candidate: (
+            candidate["median_y"],
+            -candidate["footprint_area_m2"],
+            -candidate["points"],
+        )
+    )
+
+    return viable[0], horizontal
+
+
+def print_candidate(
+    label,
+    candidate,
+):
+    plane = candidate["plane"]
+
+    print(f"\n{label}")
+
+    print(
+        f"  Iteration: {candidate['iteration']}"
+    )
+
+    print(
+        f"  Points: {candidate['points']:,}"
+    )
+
+    print(
+        f"  Median Y: {candidate['median_y']:.4f} m"
+    )
+
+    print(
+        "  Y p01/p99: "
+        f"{candidate['y_range_p01_p99'][0]:.4f} -> "
+        f"{candidate['y_range_p01_p99'][1]:.4f} m"
+    )
+
+    print(
+        "  Footprint: "
+        f"{candidate['footprint_x_m']:.3f} x "
+        f"{candidate['footprint_z_m']:.3f} m "
+        f"({candidate['footprint_area_m2']:.3f} m^2)"
+    )
+
+    print(
+        f"  Angle to Y: {candidate['angle_to_y']:.3f}°"
+    )
+
+    print(
+        f"  Residual P95: "
+        f"{candidate['residual_p95_m']:.4f} m"
+    )
+
+    print(
+        f"  Normal: {candidate['normal']}"
+    )
+
+    print(
+        f"  Centroid: {candidate['centroid']}"
+    )
+
+    print(
+        "  Plane: "
+        f"{plane[0]:.6f}x + "
+        f"{plane[1]:.6f}y + "
+        f"{plane[2]:.6f}z + "
+        f"{plane[3]:.6f} = 0"
+    )
 
 
 # ============================================================
@@ -67,31 +279,29 @@ def main():
     )
 
     # --------------------------------------------------------
-    # Camera trajectory / reference height
-    #
-    # For this capture, the camera Y coordinate is close
-    # to zero. We use the origin as the first diagnostic
-    # reference.
-    #
-    # The detected floor should be substantially below it.
-    # --------------------------------------------------------
-
-    reference_camera_y = 0.0
-
-    print(
-        f"\nReference camera Y: "
-        f"{reference_camera_y:.3f} m"
-    )
-
-    # --------------------------------------------------------
     # RANSAC planes
     # --------------------------------------------------------
 
     remaining = cloud
+    remaining_indices = np.arange(
+        len(points)
+    )
 
     candidates = []
 
-    for iteration in range(15):
+    print(
+        "\n" + "=" * 70
+    )
+
+    print(
+        "RANSAC PLANE SEARCH"
+    )
+
+    print(
+        "=" * 70
+    )
+
+    for iteration in range(MAX_PLANES):
 
         if len(remaining.points) < MIN_FLOOR_POINTS:
             break
@@ -111,62 +321,6 @@ def main():
         if len(inliers) < MIN_FLOOR_POINTS:
             break
 
-        a, b, c, d = plane_model
-
-        normal = np.array(
-            [a, b, c],
-            dtype=np.float64,
-        )
-
-        norm = np.linalg.norm(
-            normal
-        )
-
-        if norm == 0:
-            break
-
-        # ----------------------------------------------------
-        # Normalize plane normal
-        # ----------------------------------------------------
-
-        normal /= norm
-
-        # The Open3D plane equation is:
-        #
-        #     ax + by + cz + d = 0
-        #
-        # Make the normal point approximately +Y.
-        #
-        # If we flip the normal, we MUST also flip d.
-        # ----------------------------------------------------
-
-        if normal[1] < 0:
-
-            normal = -normal
-            d = -d
-
-        # ----------------------------------------------------
-        # Calculate Y coordinate of the plane
-        #
-        # For a nearly horizontal plane:
-        #
-        #     nx*x + ny*y + nz*z + d = 0
-        #
-        # Therefore, at the plane's reference location:
-        #
-        #     y = -d / ny
-        # ----------------------------------------------------
-
-        if abs(normal[1]) > 1e-8:
-
-            plane_y = (
-                -d / normal[1]
-            )
-
-        else:
-
-            plane_y = np.nan
-
         # ----------------------------------------------------
         # Get plane points
         # ----------------------------------------------------
@@ -175,87 +329,32 @@ def main():
             remaining.points
         )[inliers]
 
-        centroid = candidate_points.mean(
-            axis=0
-        )
-
-        # ----------------------------------------------------
-        # Angle between plane normal and Y axis
-        # ----------------------------------------------------
-
-        angle_to_y = np.degrees(
-            np.arccos(
-                np.clip(
-                    abs(normal[1]),
-                    0.0,
-                    1.0,
-                )
+        original_inliers = remaining_indices[
+            np.asarray(
+                inliers,
+                dtype=np.int64,
             )
+        ]
+
+        plane = normalize_plane(
+            plane_model
         )
 
-        # ----------------------------------------------------
-        # Distance below camera
-        # ----------------------------------------------------
-
-        below_camera = (
-            reference_camera_y
-            - plane_y
+        candidate = candidate_metrics(
+            plane,
+            candidate_points,
+            original_inliers,
+            iteration + 1,
         )
 
-        # ----------------------------------------------------
-        # Candidate tests
-        # ----------------------------------------------------
-
-        is_horizontal = (
-            abs(normal[1])
-            >= NORMAL_Y_THRESHOLD
+        candidates.append(
+            candidate
         )
 
-        is_below_camera = (
-            MIN_FLOOR_HEIGHT_BELOW_CAMERA
-            <= below_camera
-            <= MAX_FLOOR_HEIGHT_BELOW_CAMERA
+        print_candidate(
+            f"Plane {iteration + 1}",
+            candidate,
         )
-
-        # ----------------------------------------------------
-        # Save valid floor candidate
-        # ----------------------------------------------------
-
-        if (
-            is_horizontal
-            and is_below_camera
-        ):
-
-            candidates.append(
-                {
-                    "plane": np.array(
-                        [
-                            normal[0],
-                            normal[1],
-                            normal[2],
-                            d,
-                        ],
-                        dtype=np.float64,
-                    ),
-
-                    "points": len(inliers),
-
-                    "normal": normal,
-
-                    "plane_y": plane_y,
-
-                    # IMPORTANT:
-                    # This was missing before and caused
-                    # the KeyError during sorting.
-                    "below_camera": below_camera,
-
-                    "angle_to_y": angle_to_y,
-
-                    "centroid": centroid,
-
-                    "inliers": inliers,
-                }
-            )
 
         # ----------------------------------------------------
         # Remove detected plane and continue searching
@@ -266,6 +365,14 @@ def main():
             invert=True,
         )
 
+        remaining_indices = np.delete(
+            remaining_indices,
+            np.asarray(
+                inliers,
+                dtype=np.int64,
+            )
+        )
+
     # --------------------------------------------------------
     # Results
     # --------------------------------------------------------
@@ -274,84 +381,51 @@ def main():
         "\n" + "=" * 70
     )
 
-    print(
-        "FLOOR CANDIDATES"
-    )
+    print("FLOOR CANDIDATES")
 
     print(
         "=" * 70
     )
 
-    if not candidates:
-
-        print(
-            "\nNo floor candidates found."
-        )
-
-        return
-
-    # --------------------------------------------------------
-    # Sort candidates
-    #
-    # 1. Prefer planes with more points.
-    # 2. If tied, prefer the plane closer to the camera.
-    # --------------------------------------------------------
-
-    candidates.sort(
-        key=lambda x: (
-            -x["points"],
-            x["below_camera"],
-        )
+    floor, horizontal_candidates = select_floor_candidate(
+        candidates
     )
 
-    # --------------------------------------------------------
-    # Print candidates
-    # --------------------------------------------------------
+    if not horizontal_candidates:
+
+        print(
+            "\nNo large near-horizontal planes found."
+        )
+
+        raise RuntimeError(
+            "Floor detection failed: no near-horizontal plane candidates."
+        )
 
     for i, candidate in enumerate(
-        candidates,
+        sorted(
+            horizontal_candidates,
+            key=lambda c: (
+                c["median_y"],
+                -c["footprint_area_m2"],
+                -c["points"],
+            ),
+        ),
         start=1,
     ):
-
-        print(
-            f"\nCandidate {i}"
+        print_candidate(
+            f"Horizontal candidate {i}",
+            candidate,
         )
 
+    if floor is None:
         print(
-            f"  Points: "
-            f"{candidate['points']:,}"
+            "\nNear-horizontal planes were found, but none had enough "
+            "support and footprint to be accepted as the room floor."
         )
 
-        print(
-            f"  Y: "
-            f"{candidate['plane_y']:.4f} m"
+        raise RuntimeError(
+            "Floor detection failed: no viable floor candidate."
         )
-
-        print(
-            f"  Height below camera: "
-            f"{candidate['below_camera']:.4f} m"
-        )
-
-        print(
-            f"  Angle to Y: "
-            f"{candidate['angle_to_y']:.3f}°"
-        )
-
-        print(
-            f"  Normal: "
-            f"{candidate['normal']}"
-        )
-
-        print(
-            f"  Centroid: "
-            f"{candidate['centroid']}"
-        )
-
-    # --------------------------------------------------------
-    # Select best floor
-    # --------------------------------------------------------
-
-    floor = candidates[0]
 
     print(
         "\n" + "=" * 70
@@ -371,13 +445,15 @@ def main():
     )
 
     print(
-        f"Floor Y: "
-        f"{floor['plane_y']:.4f} m"
+        f"Median Y: "
+        f"{floor['median_y']:.4f} m"
     )
 
     print(
-        f"Height below camera: "
-        f"{floor['below_camera']:.4f} m"
+        "Footprint: "
+        f"{floor['footprint_x_m']:.3f} x "
+        f"{floor['footprint_z_m']:.3f} m "
+        f"({floor['footprint_area_m2']:.3f} m^2)"
     )
 
     print(
@@ -393,6 +469,11 @@ def main():
     print(
         f"Centroid: "
         f"{floor['centroid']}"
+    )
+
+    print(
+        f"Residual P95: "
+        f"{floor['residual_p95_m']:.4f} m"
     )
 
     # --------------------------------------------------------

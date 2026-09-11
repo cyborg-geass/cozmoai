@@ -346,7 +346,9 @@ def main():
             "\nNo wall candidates found."
         )
 
-        return
+        raise RuntimeError(
+            "Wall detection failed: no vertical wall plane candidates."
+        )
 
     # --------------------------------------------------------
     # Sort
