@@ -19,7 +19,7 @@ from cozmo_ai.io.calibration import load_camera_calibration
 # Configuration
 # ------------------------------------------------------------
 
-FRAME_STRIDE = 8
+FRAME_STRIDE = 4
 PIXEL_STRIDE = 4
 VOXEL_SIZE = 0.02
 
