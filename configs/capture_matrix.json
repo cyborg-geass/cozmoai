@@ -10,7 +10,8 @@
       "imu_source": "imu.csv",
       "calibration": "camera_matrix.csv",
       "role": "primary evaluated capture",
-      "status": "evaluated"
+      "status": "evaluated",
+      "semantic_evidence": "submission/evidence/single_room/room_semantics/room_semantics.json"
     }
   ],
   "devices_or_tiers": [

@@ -1,0 +1,152 @@
+{
+  "room_semantics": {
+    "label": "unknown",
+    "confidence": 0.0,
+    "stability": 0.0,
+    "method": "zero_shot_vlm",
+    "model": "openai/clip-vit-base-patch32",
+    "sampled_frames": [
+      0,
+      114,
+      229,
+      343,
+      457,
+      571,
+      686,
+      800,
+      914,
+      1028,
+      1143,
+      1257,
+      1371,
+      1485,
+      1600
+    ],
+    "top_classes": [],
+    "status": "model_unavailable",
+    "frame_evidence": [
+      {
+        "frame_index": 0,
+        "quality": {
+          "brightness": 118.71305374710649,
+          "blur_laplacian_var": 9.491354516346071
+        },
+        "status": "sampled"
+      },
+      {
+        "frame_index": 114,
+        "quality": {
+          "brightness": 138.92063838252315,
+          "blur_laplacian_var": 12.190143220323268
+        },
+        "status": "sampled"
+      },
+      {
+        "frame_index": 229,
+        "quality": {
+          "brightness": 111.97433955439814,
+          "blur_laplacian_var": 2.2099131903921787
+        },
+        "status": "sampled"
+      },
+      {
+        "frame_index": 343,
+        "quality": {
+          "brightness": 136.31085575810187,
+          "blur_laplacian_var": 5.994504445954312
+        },
+        "status": "sampled"
+      },
+      {
+        "frame_index": 457,
+        "quality": {
+          "brightness": 135.36007486979167,
+          "blur_laplacian_var": 11.363978571569184
+        },
+        "status": "sampled"
+      },
+      {
+        "frame_index": 571,
+        "quality": {
+          "brightness": 145.1571466290509,
+          "blur_laplacian_var": 2.146398637085458
+        },
+        "status": "sampled"
+      },
+      {
+        "frame_index": 686,
+        "quality": {
+          "brightness": 167.94647026909723,
+          "blur_laplacian_var": 13.5377061605566
+        },
+        "status": "sampled"
+      },
+      {
+        "frame_index": 800,
+        "quality": {
+          "brightness": 153.8228197337963,
+          "blur_laplacian_var": 4.591106046616459
+        },
+        "status": "sampled"
+      },
+      {
+        "frame_index": 914,
+        "quality": {
+          "brightness": 63.66656358506945,
+          "blur_laplacian_var": 5.260790362722557
+        },
+        "status": "sampled"
+      },
+      {
+        "frame_index": 1028,
+        "quality": {
+          "brightness": 136.90824797453703,
+          "blur_laplacian_var": 6.985964264543426
+        },
+        "status": "sampled"
+      },
+      {
+        "frame_index": 1143,
+        "quality": {
+          "brightness": 137.7940360966435,
+          "blur_laplacian_var": 1.467211731238424
+        },
+        "status": "sampled"
+      },
+      {
+        "frame_index": 1257,
+        "quality": {
+          "brightness": 131.83130063657407,
+          "blur_laplacian_var": 6.3707772675867425
+        },
+        "status": "sampled"
+      },
+      {
+        "frame_index": 1371,
+        "quality": {
+          "brightness": 139.18880570023148,
+          "blur_laplacian_var": 2.9513009826930956
+        },
+        "status": "sampled"
+      },
+      {
+        "frame_index": 1485,
+        "quality": {
+          "brightness": 162.54701208043983,
+          "blur_laplacian_var": 11.289636833033411
+        },
+        "status": "sampled"
+      },
+      {
+        "frame_index": 1600,
+        "quality": {
+          "brightness": 159.7673701533565,
+          "blur_laplacian_var": 3.241448205809208
+        },
+        "status": "sampled"
+      }
+    ],
+    "contact_sheet": "room_semantics\\contact_sheet.png",
+    "message": "Optional AI dependencies are not installed. Install torch, transformers, and pillow to enable room semantics."
+  }
+}

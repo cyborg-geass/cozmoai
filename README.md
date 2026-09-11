@@ -5,9 +5,11 @@ provided Cozmo AI dataset capture:
 
 `../cozmo-dataset/raw_dataset/single_room/c00a170fe1`
 
-The implementation reconstructs a depth/odometry point cloud, detects floor and
-wall planes, selects a trajectory-constrained room envelope, evaluates model-based
-measurement uncertainty, and writes a submission manifest.
+The implementation separates semantic perception from metrology. Optional
+pretrained vision-language models infer room semantics from sampled RGB frames,
+while calibrated RGB-D geometry and odometry reconstruct the scene and produce
+physical measurements. Neural model scores are never used as substitutes for
+metric uncertainty.
 
 ## Current Result
 
@@ -24,6 +26,7 @@ Latest deterministic finalization run:
 | Floor residual P95 | 0.0254 m |
 | Detected wall planes | 6 |
 | Opening candidates on selected wall | 0 |
+| Room semantics status | model_unavailable locally |
 
 The rectangular reference area is the product of the two selected wall-to-wall
 separations. The reported floor-plan area is the reconstructed quadrilateral
@@ -56,14 +59,37 @@ uv run python scripts/finalize_pipeline.py
 ```
 
 The finalizer validates the raw capture, clears known stale generated artifacts,
-runs all seven pipeline stages, validates each stage output, and writes:
+runs all eight pipeline stages, validates each stage output, and writes:
 
 ```text
+outputs/single_room/final_result.json
 outputs/single_room/submission_manifest.json
 ```
 
 Generated outputs are intentionally ignored by git because they include point
 cloud artifacts. Regenerate them with the command above.
+
+## Optional AI Perception
+
+Room semantics are exposed through:
+
+```powershell
+uv run python scripts/classify_room.py <capture_dir> <output_dir>
+```
+
+By default, the classifier tries to use `openai/clip-vit-base-patch32` from local
+model cache only. If `torch`, `transformers`, or model weights are unavailable,
+the command writes `status = "model_unavailable"` and still produces sampled
+frame evidence. This keeps the geometry pipeline reproducible without network or
+GPU access.
+
+Useful flags:
+
+```powershell
+uv run python scripts/finalize_pipeline.py --disable-ai
+uv run python scripts/finalize_pipeline.py --room-samples 16 --device cpu
+uv run python scripts/finalize_pipeline.py --allow-model-download
+```
 
 ## Repository Layout
 
@@ -74,6 +100,7 @@ scripts/                  Canonical final pipeline scripts
 scripts/archive_exploratory/
                           Investigation/debug scripts retained for traceability
 src/cozmo_ai/             Reusable geometry and IO helpers
+src/cozmo_ai/perception/  Optional semantic perception layer
 submission/               GitHub-facing submission entry point and evidence
 tests/                    Unit tests for geometry and pipeline validation
 ```

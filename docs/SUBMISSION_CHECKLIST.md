@@ -3,8 +3,10 @@
 ## Included
 
 - Reproducible pipeline runner: `scripts/finalize_pipeline.py`
+- Room semantic CLI: `scripts/classify_room.py`
 - Submission bundle builder: `scripts/package_submission.py`
 - Source package: `src/cozmo_ai`
+- Optional perception package: `src/cozmo_ai/perception`
 - Pipeline scripts: `scripts`
 - Unit tests: `tests`
 - Technical report: `docs/TECHNICAL_REPORT.md`
@@ -13,6 +15,7 @@
 - GitHub submission entry point: `submission/README.md`
 - Lightweight generated evidence: `submission/evidence/single_room`
 - Full generated manifest: `outputs/single_room/submission_manifest.json`
+- Unified final result: `outputs/single_room/final_result.json`
 
 ## Not In The Main Path
 
@@ -35,5 +38,7 @@ uv run python scripts/package_submission.py
 - Multi-room and repeat-room benchmark gates are not evaluated.
 - Damage detection is not evaluated.
 - Ground-truth absolute accuracy is not available.
+- Room classification model weights/dependencies are not installed locally, so
+  current semantic output is `model_unavailable`.
 
 These are data/evidence constraints, not hidden implementation passes.

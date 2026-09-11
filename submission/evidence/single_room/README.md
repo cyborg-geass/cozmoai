@@ -10,6 +10,7 @@ uv run python scripts/finalize_pipeline.py
 Included evidence:
 
 - `submission_manifest.json`
+- `final_result.json`
 - `measurement_evaluation.json`
 - `room_envelope.json`
 - `room_envelope.png`
@@ -18,6 +19,8 @@ Included evidence:
 - `walls.json`
 - `openings_wall5.json`
 - `wall5_opening_profile.csv`
+- `room_semantics/room_semantics.json`
+- `room_semantics/contact_sheet.png`
 
 Large point-cloud artifacts are regenerated under `outputs/single_room` and are
 not committed to git.

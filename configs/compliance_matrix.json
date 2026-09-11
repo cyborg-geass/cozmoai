@@ -22,8 +22,8 @@
     },
     {
       "requirement": "Room labels",
-      "status": "partial",
-      "evidence": "Single-room geometry demonstrated; multi-room semantic labels not evaluated."
+      "status": "implemented_fallback",
+      "evidence": "Zero-shot room classifier interface samples RGB frames and writes room_semantics.json plus contact_sheet.png; local model dependencies/weights are unavailable, so current status is model_unavailable."
     },
     {
       "requirement": "Wall lengths",
@@ -58,7 +58,7 @@
     {
       "requirement": "Evidence overlays",
       "status": "partial",
-      "evidence": "Geometry evidence exists; complete photo-tier overlays not evaluated."
+      "evidence": "Geometry plots and room-classification contact sheet are produced; complete photo-tier overlays are not evaluated."
     },
     {
       "requirement": "Photo registration <= 1.0 px",

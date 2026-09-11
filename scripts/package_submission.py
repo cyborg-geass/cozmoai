@@ -29,6 +29,7 @@ CODE_DIRS = [
 ]
 
 GENERATED_ARTIFACTS = [
+    OUT / "final_result.json",
     OUT / "submission_manifest.json",
     OUT / "measurement_evaluation.json",
     OUT / "room_envelope.json",
@@ -40,6 +41,8 @@ GENERATED_ARTIFACTS = [
     OUT / "wall5_opening_profile.csv",
     OUT / "pointcloud_production.ply",
     OUT / "floor_plane.ply",
+    OUT / "room_semantics" / "room_semantics.json",
+    OUT / "room_semantics" / "contact_sheet.png",
 ]
 
 SKIP_DIR_NAMES = {
@@ -97,14 +100,14 @@ def validate_manifest(manifest: dict) -> None:
         {},
     )
 
-    if len(outputs) != 10:
+    if len(outputs) != 13:
         raise SubmissionPackagingError(
-            f"Expected 10 manifest outputs, found {len(outputs)}"
+            f"Expected 13 manifest outputs, found {len(outputs)}"
         )
 
-    if len(artifacts) != 10:
+    if len(artifacts) != 13:
         raise SubmissionPackagingError(
-            f"Expected 10 manifest artifacts, found {len(artifacts)}"
+            f"Expected 13 manifest artifacts, found {len(artifacts)}"
         )
 
 

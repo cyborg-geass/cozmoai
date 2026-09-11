@@ -43,7 +43,10 @@
     "outputs\\single_room\\room_envelope.png",
     "outputs\\single_room\\measurement_evaluation.json",
     "outputs\\single_room\\openings_wall5.json",
-    "outputs\\single_room\\wall5_opening_profile.csv"
+    "outputs\\single_room\\wall5_opening_profile.csv",
+    "outputs\\single_room\\room_semantics\\room_semantics.json",
+    "outputs\\single_room\\room_semantics\\contact_sheet.png",
+    "outputs\\single_room\\final_result.json"
   ],
   "artifacts": {
     "outputs\\single_room\\pointcloud_production.ply": {
@@ -125,6 +128,26 @@
       "path": "outputs\\single_room\\wall5_opening_profile.csv",
       "status": "generated",
       "bytes": 3301
+    },
+    "outputs\\single_room\\room_semantics\\room_semantics.json": {
+      "path": "outputs\\single_room\\room_semantics\\room_semantics.json",
+      "status": "validated",
+      "bytes": 3786,
+      "semantic_status": "model_unavailable",
+      "label": "unknown",
+      "sampled_frame_count": 15
+    },
+    "outputs\\single_room\\room_semantics\\contact_sheet.png": {
+      "path": "outputs\\single_room\\room_semantics\\contact_sheet.png",
+      "status": "generated",
+      "bytes": 1263603
+    },
+    "outputs\\single_room\\final_result.json": {
+      "path": "outputs\\single_room\\final_result.json",
+      "status": "validated",
+      "bytes": 6858,
+      "room_semantics_status": "model_unavailable",
+      "floor_area_m2": 14.31384308878245
     }
   },
   "not_evaluated": [

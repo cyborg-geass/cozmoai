@@ -9,6 +9,7 @@ submission.
 - Technical report: `../docs/TECHNICAL_REPORT.md`
 - Compliance matrix: `../configs/compliance_matrix.json`
 - Capture/device matrix: `../configs/capture_matrix.json`
+- Unified final result: `evidence/single_room/final_result.json`
 - Lightweight generated evidence: `evidence/single_room`
 
 ## Reproduce
@@ -21,3 +22,7 @@ uv run python scripts/finalize_pipeline.py
 The finalizer refreshes `submission/evidence/single_room` with JSON, PNG, and CSV
 evidence that is suitable for GitHub review. Large point-cloud files are generated
 under `outputs/single_room` and are intentionally not tracked.
+
+The current room semantic artifact reports `model_unavailable` because optional
+AI dependencies and local model weights are not installed in this environment.
+This is an explicit fallback state; the metric geometry pipeline still completes.

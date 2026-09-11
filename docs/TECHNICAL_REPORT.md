@@ -3,10 +3,12 @@
 ## Summary
 
 This submission implements the depth/LiDAR tier on the supplied single-room
-capture `single_room/c00a170fe1`. The reproducible pipeline builds a global point
-cloud from depth frames and odometry, fits floor and wall planes, selects a
-trajectory-constrained room envelope, and reports model-based uncertainty for the
-two primary wall-to-wall room dimensions.
+capture `single_room/c00a170fe1` and adds an optional learned perception layer
+for RGB semantics. The reproducible pipeline builds a global point cloud from
+depth frames and odometry, fits floor and wall planes, selects a
+trajectory-constrained room envelope, reports model-based uncertainty for the two
+primary wall-to-wall room dimensions, and writes a final result that separates
+semantic confidence from metric uncertainty.
 
 The current run reconstructs a quadrilateral footprint area of **14.3138 m2** with
 primary separations of **2.2621 m** and **6.0136 m**. The result is not claimed as
@@ -42,6 +44,10 @@ frame counts match before it computes artifacts.
    model-based uncertainty for the selected dimensions.
 7. `scripts/detect_openings.py` profiles a selected wall and reports opening
    candidates only when supported by observed geometry.
+8. `scripts/classify_room.py` samples RGB frames and runs optional zero-shot room
+   classification through a lazily loaded vision-language model adapter. If the
+   model or dependencies are unavailable, it records `model_unavailable` without
+   failing the geometry pipeline.
 
 `scripts/finalize_pipeline.py` is the canonical runner. It removes known stale
 outputs before each run and validates every required artifact as soon as it is
@@ -64,10 +70,30 @@ produced.
 | Reconstructed footprint area | 14.3138 m2 |
 | Trajectory inside selected envelope | 72.3% |
 | Opening candidates on wall 5 | 0 |
+| Room semantics status | model_unavailable locally |
+| Sampled RGB frames for semantics | 15 decoded from 16 requested |
 
 The rectangular reference area is included only as a diagnostic uncertainty
 calculation. The submitted plan area is the reconstructed quadrilateral footprint
 from the selected wall intersections.
+
+## Learned Perception
+
+The perception layer lives under `src/cozmo_ai/perception`. It contains typed
+semantic schemas, deterministic RGB frame sampling, prompt ensembling, room-level
+probability aggregation, and a lazy zero-shot model adapter. The adapter uses a
+CLIP-compatible Hugging Face model when optional dependencies and weights are
+available, but default execution does not require network access.
+
+On this machine, optional AI dependencies are not installed, so the current
+artifact reports `status = "model_unavailable"`, `label = "unknown"`, and
+`confidence = 0.0`. The sampled frame indices and a contact-sheet evidence image
+are still generated so the evaluator can verify what the semantic layer would
+inspect.
+
+Semantic confidence is similarity-derived model confidence. It is not a 95%
+confidence interval and is not used for wall lengths, area, opening dimensions,
+or any other metric output.
 
 ## Confidence And Calibration
 
@@ -119,5 +145,6 @@ uv run python scripts/package_submission.py
 ```
 
 Primary generated artifacts are listed in
-`outputs/single_room/submission_manifest.json`. The packaging script writes
+`outputs/single_room/submission_manifest.json`. The unified final result is
+`outputs/single_room/final_result.json`. The packaging script writes
 `outputs/cozmo_ai_submission_bundle.zip`.
